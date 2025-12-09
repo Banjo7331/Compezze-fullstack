@@ -1,6 +1,9 @@
 version: "3.8"
 
 services:
+  # ==========================================
+  # DATABASES & STORAGE
+  # ==========================================
   db:
     image: postgres:16
     container_name: contests_db
@@ -46,48 +49,22 @@ services:
     entrypoint: |
       /bin/sh -c "
       set -e
-      
-      # Czekamy na MinIO (healthcheck jest ok, ale dajmy mu sekundę na start API)
       sleep 2
-
-      # Konfiguracja aliasu (logowanie)
       mc alias set local http://minio:9000 minioadmin minioadmin123
-
-      # Tworzenie bucketów (ignoruje błąd jeśli już istnieją)
       mc mb -p local/contest-public  || true
       mc mb -p local/contest-private || true
-
-      # Polityki dostępu
       mc anonymous set download local/contest-public  || true
       mc anonymous set none     local/contest-private || true
-
-      # Konfiguracja CORS (w jednej linii, żeby YAML nie popsuł)
       echo '[{\"AllowedOrigin\":[\"*\"],\"AllowedMethod\":[\"GET\",\"PUT\",\"POST\",\"HEAD\"],\"AllowedHeader\":[\"*\"],\"ExposeHeader\":[\"ETag\",\"x-amz-request-id\",\"x-minio-origin-endpoint\"],\"MaxAgeSeconds\":3000}]' > /tmp/cors.json
-
-      # Aplikowanie CORS
       mc anonymous set cors local/contest-public  /tmp/cors.json || true
       mc anonymous set cors local/contest-private /tmp/cors.json || true
-
       echo '--- MinIO Configured ---'
-      echo '--- Starting Data Seeding ---'
-
-      # Kopiowanie Avatarów
       if [ -d \"/seed_data/avatars\" ]; then
-         echo 'Found avatars directory. Uploading...'
-         # cp --recursive kopiuje zawartość folderu
          mc cp --recursive /seed_data/avatars/ local/contest-public/avatars/ || true
-      else
-         echo 'No avatars directory found in /seed_data/avatars'
       fi
-
-      # Kopiowanie Szablonów
       if [ -d \"/seed_data/templates\" ]; then
-         echo 'Found templates directory. Uploading...'
          mc cp --recursive /seed_data/templates/ local/contest-public/templates/ || true
-      else
-         echo 'No templates directory found in /seed_data/templates'
       fi
-      
       echo 'MinIO init & seed done.'
       exit 0
       "
@@ -104,6 +81,127 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  # ========
+  # BACKEND 
+  # ========
+
+  # EUREKA SERVER
+  eureka-server:
+    build: ./eureka-server
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    environment:
+      - APP_EUREKA_PASSWORD=admin123
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://eureka-client:admin123@localhost:8761/actuator/health"]
+      interval: 30s
+      retries: 5
+
+  # API GATEWAY
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - EUREKA_URI=http://eureka-client:admin123@eureka-server:8761/eureka/
+      - SPRING_CONFIG_ADDITIONAL_LOCATION=file:/app/secret.properties
+    volumes:
+      - ./api-gateway/src/main/resources/secret.properties:/app/secret.properties
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  # IDENTITY SERVICE
+  identity-service:
+    build: ./identity-service
+    container_name: identity-service
+    environment:
+      - EUREKA_URI=http://eureka-client:admin123@eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/contests
+      - SPRING_CONFIG_ADDITIONAL_LOCATION=file:/app/secret.properties
+    volumes:
+      - ./identity-service/src/main/resources/secret.properties:/app/secret.properties
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+
+  # QUIZ SERVICE
+  quiz-service:
+    build: ./quiz-service
+    container_name: quiz-service
+    environment:
+      - EUREKA_URI=http://eureka-client:admin123@eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/contests
+      - SPRING_CONFIG_ADDITIONAL_LOCATION=file:/app/secret.properties
+    volumes:
+      - ./quiz-service/src/main/resources/secret.properties:/app/secret.properties
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+
+  # SURVEY SERVICE
+  survey-service:
+    build: ./survey-service
+    container_name: survey-service
+    environment:
+      - EUREKA_URI=http://eureka-client:admin123@eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/contests
+      - SPRING_CONFIG_ADDITIONAL_LOCATION=file:/app/secret.properties
+    volumes:
+      - ./survey-service/src/main/resources/secret.properties:/app/secret.properties
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+
+  # CONTEST SERVICE
+  contest-service:
+    build: ./contest-service
+    container_name: contest-service
+    environment:
+      - EUREKA_URI=http://eureka-client:admin123@eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/contests
+      - SPRING_DATASOURCE_USERNAME=contests
+      - SPRING_DATASOURCE_PASSWORD=contests
+      - SPRING_CONFIG_ADDITIONAL_LOCATION=file:/app/secret.properties
+      - REDIS_HOST=redis
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin123
+      - MEDIA_PUBLIC_BASE_URL=http://localhost:9000
+
+    volumes:
+      - ./contest-service/src/main/resources/secret.properties:/app/secret.properties
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  # ========
+  # FRONTEND
+  # ========
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    depends_on:
+      - api-gateway
 
 volumes:
   db_data:

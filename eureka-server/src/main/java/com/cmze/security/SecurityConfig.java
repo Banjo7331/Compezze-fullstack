@@ -48,6 +48,19 @@ public class SecurityConfig {
 
     @Bean
     @Order(2)
+    SecurityFilterChain actuator(HttpSecurity http) throws Exception {
+        http.securityMatcher("/actuator/**")
+                .authorizeHttpRequests(a -> a
+                        .requestMatchers("/actuator/health").permitAll()
+                        .anyRequest().hasRole("ADMIN")
+                )
+                .httpBasic(Customizer.withDefaults())
+                .csrf(c -> c.disable());
+        return http.build();
+    }
+
+    @Bean
+    @Order(3)
     SecurityFilterChain ui(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(a -> a
                         .requestMatchers("/css/**","/js/**","/images/**").permitAll()
