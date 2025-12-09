@@ -1,0 +1,59 @@
+### --- GLOBAL --- ###
+.DS_Store
+Thumbs.db
+*.log
+
+### --- IDE --- ###
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# VS Code
+.vscode/
+!.vscode/extensions.json
+
+# Other
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+### --- BACKEND --- ###
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+.classpath
+.project
+.settings/
+.springBeans
+nbproject/
+nbbuild/
+
+### --- FRONTEND --- ###
+node_modules/
+dist/
+dist-ssr/
+.sass-cache/
+bower_components/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+.env
+.env.*
+!.env.example
+secret.properties
+**/secret.properties
+
+certificates/
+*.pem
+*.key

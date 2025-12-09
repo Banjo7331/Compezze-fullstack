@@ -1,0 +1,13 @@
+package com.cmze.spi.helpers.room;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class QuestionOptionDto {
+    private Long id;
+    private String text;
+}

@@ -1,0 +1,111 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16
+    container_name: contests_db
+    environment:
+      POSTGRES_DB: contests
+      POSTGRES_USER: contests
+      POSTGRES_PASSWORD: contests
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contests -d contests"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: contests_minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./docker/minio-seed:/seed_data
+    entrypoint: |
+      /bin/sh -c "
+      set -e
+      
+      # Czekamy na MinIO (healthcheck jest ok, ale dajmy mu sekundę na start API)
+      sleep 2
+
+      # Konfiguracja aliasu (logowanie)
+      mc alias set local http://minio:9000 minioadmin minioadmin123
+
+      # Tworzenie bucketów (ignoruje błąd jeśli już istnieją)
+      mc mb -p local/contest-public  || true
+      mc mb -p local/contest-private || true
+
+      # Polityki dostępu
+      mc anonymous set download local/contest-public  || true
+      mc anonymous set none     local/contest-private || true
+
+      # Konfiguracja CORS (w jednej linii, żeby YAML nie popsuł)
+      echo '[{\"AllowedOrigin\":[\"*\"],\"AllowedMethod\":[\"GET\",\"PUT\",\"POST\",\"HEAD\"],\"AllowedHeader\":[\"*\"],\"ExposeHeader\":[\"ETag\",\"x-amz-request-id\",\"x-minio-origin-endpoint\"],\"MaxAgeSeconds\":3000}]' > /tmp/cors.json
+
+      # Aplikowanie CORS
+      mc anonymous set cors local/contest-public  /tmp/cors.json || true
+      mc anonymous set cors local/contest-private /tmp/cors.json || true
+
+      echo '--- MinIO Configured ---'
+      echo '--- Starting Data Seeding ---'
+
+      # Kopiowanie Avatarów
+      if [ -d \"/seed_data/avatars\" ]; then
+         echo 'Found avatars directory. Uploading...'
+         # cp --recursive kopiuje zawartość folderu
+         mc cp --recursive /seed_data/avatars/ local/contest-public/avatars/ || true
+      else
+         echo 'No avatars directory found in /seed_data/avatars'
+      fi
+
+      # Kopiowanie Szablonów
+      if [ -d \"/seed_data/templates\" ]; then
+         echo 'Found templates directory. Uploading...'
+         mc cp --recursive /seed_data/templates/ local/contest-public/templates/ || true
+      else
+         echo 'No templates directory found in /seed_data/templates'
+      fi
+      
+      echo 'MinIO init & seed done.'
+      exit 0
+      "
+
+  redis:
+    image: redis:alpine
+    container_name: contests_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  db_data:
+  minio_data:
+  redis_data:
