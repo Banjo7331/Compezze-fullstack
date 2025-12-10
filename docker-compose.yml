@@ -104,9 +104,10 @@ services:
     build: ./api-gateway
     container_name: api-gateway
     ports:
-      - "8080:8080"
+      - "8000:8000"
     environment:
       - EUREKA_URI=http://eureka-client:admin123@eureka-server:8761/eureka/
+      - FRONTEND_URL=http://localhost:5173
       - SPRING_CONFIG_ADDITIONAL_LOCATION=file:/app/secret.properties
     volumes:
       - ./api-gateway/src/main/resources/secret.properties:/app/secret.properties
@@ -199,7 +200,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://localhost:8080
+      - VITE_API_URL=http://localhost:8000/api/v1
     depends_on:
       - api-gateway
 
