@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import type { LinkProps } from 'react-router-dom'; 
 
 import { UpcomingContestWidget } from '@/features/contest/components/UpcomingContestWidget';
+import { ContestPublicList } from '@/features/contest/components/ContestPublicList';
 
 const ContestPage: React.FC = () => {
     const LinkButton = Button as React.ComponentType<ButtonProps & Pick<LinkProps, 'to'>>;
@@ -16,23 +17,24 @@ const ContestPage: React.FC = () => {
         <Container maxWidth="lg">
             <Box sx={{ my: 4 }}>
                 <UpcomingContestWidget />
+                
                 <Box sx={{ textAlign: 'center', mb: 6 }}>
                     <Typography variant="h3" component="h1" gutterBottom fontWeight="bold" color="secondary">
                         <EmojiEventsIcon sx={{ fontSize: 50, verticalAlign: 'middle', mr: 2 }} />
                         Centrum Konkursów
                     </Typography>
                     <Typography variant="h6" color="text.secondary">
-                        Zarządzaj wieloetapowymi wydarzeniami.
+                        Dołącz do rywalizacji i wygrywaj!
                     </Typography>
                 </Box>
 
                 <Grid container spacing={4} justifyContent="center">
                     
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={{ xs: 12, md: 4 }}>
                         <Paper 
                             elevation={6} 
                             sx={{ 
-                                p: 5, 
+                                p: 4, 
                                 height: '100%', 
                                 display: 'flex', 
                                 flexDirection: 'column', 
@@ -40,38 +42,36 @@ const ContestPage: React.FC = () => {
                                 justifyContent: 'center', 
                                 backgroundColor: '#f3e5f5',
                                 borderRadius: 3,
-                                minHeight: 300 
+                                minHeight: 200 
                             }}
                         >
-                            <AddIcon sx={{ fontSize: 80, color: 'secondary.main', mb: 2 }} />
-                            <Typography variant="h4" component="h2" align="center" sx={{ mb: 1 }}>
-                                Nowy Konkurs
+                            <AddIcon sx={{ fontSize: 60, color: 'secondary.main', mb: 2 }} />
+                            <Typography variant="h5" align="center" gutterBottom>
+                                Organizator
                             </Typography>
-                            <Typography variant="body1" align="center" sx={{ mb: 4, color: 'text.secondary' }}>
-                                Zaplanuj quizy, ankiety i głosowania jury w jednym miejscu.
+                            <Typography variant="body2" align="center" sx={{ mb: 3, color: 'text.secondary' }}>
+                                Stwórz własny konkurs wieloetapowy.
                             </Typography>
                             <LinkButton 
-                                variant="contained"
+                                variant="outlined"
                                 color="secondary"
-                                size="large"
                                 startIcon={<AddIcon />}
                                 component={Link}
                                 to="/contest/create"
-                                sx={{ px: 4, py: 1.5 }}
                             >
-                                KREATOR KONKURSU
+                                UTWÓRZ NOWY
                             </LinkButton>
                         </Paper>
                     </Grid>
 
-                    <Grid size={{ xs: 12 }}>
-                        <Box sx={{ mt: 8, textAlign: 'center', borderTop: '1px dashed #ccc', pt: 4 }}>
-                            <Typography variant="h5" color="text.disabled" gutterBottom>
-                                🏆 Aktywne Wydarzenia
+                    <Grid size={{ xs: 12, md: 8 }}>
+                        <Box>
+                            <Typography variant="h5" gutterBottom sx={{ borderBottom: '1px solid #eee', pb: 1, mb: 2 }}>
+                                🌍 Otwarte Zapisy
                             </Typography>
-                            <Typography variant="body2" color="text.disabled">
-                                (Lista publicznych konkursów pojawi się tutaj wkrótce...)
-                            </Typography>
+                            
+                            <ContestPublicList />
+                            
                         </Box>
                     </Grid>
 

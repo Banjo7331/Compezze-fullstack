@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Container, CircularProgress, Alert, Box, Stack, Paper, Typography } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import NextPlanIcon from '@mui/icons-material/NextPlan';
-import StopCircleIcon from '@mui/icons-material/StopCircle';
+import FlagIcon from '@mui/icons-material/Flag';
 
 import { Button } from '@/shared/ui/Button';
 import { contestService } from '@/features/contest/api/contestService';
@@ -38,7 +38,7 @@ const ContestLivePage: React.FC = () => {
             const settings = roomData.currentStageSettings;
             if (settings && (settings.type === 'QUIZ' || settings.type === 'SURVEY') && settings.activeRoomId) {
                 try {
-                    const token = await contestService.getStageAccessToken(contestId!, settings.activeRoomId);
+                    const token = await contestService.getStageAccessToken(contestId!, roomData.roomId);
                     setStageTicket(token);
                 } catch (e) {
                     setStageTicket(null);
@@ -65,36 +65,43 @@ const ContestLivePage: React.FC = () => {
 
     // --- HANDLERY ---
     const handleStartContest = async () => {
+        if (!roomState?.roomId) return; // Zabezpieczenie
         try {
-            await contestService.startContest(contestId!);
-            showSuccess("Start!");
+            // Przekazujemy contestId ORAZ roomId (który mamy w stanie)
+            await contestService.startContest(contestId!, roomState.roomId);
+            showSuccess("Konkurs wystartował!");
             fetchState(); 
         } catch (e) { showError("Błąd startu."); }
     };
 
     const handleNextStage = async () => {
-        if(!window.confirm("Następny etap?")) return;
+        if (!roomState?.roomId) return;
+        if(!window.confirm("Przejść do następnego etapu?")) return;
         try {
-            await contestService.nextStage(contestId!);
+            await contestService.nextStage(contestId!, roomState.roomId);
             showSuccess("Zmieniono etap.");
-            fetchState();
-        } catch (e) { showError("Błąd."); }
+            fetchState(); 
+        } catch (e) { showError("Błąd zmiany etapu."); }
     };
 
-    const handleFinishStage = async () => {
-        if(!window.confirm("Zakończyć etap?")) return;
+    const handleCloseContest = async () => {
+        if (!roomState?.roomId) return;
+        if (!window.confirm("Czy na pewno chcesz zakończyć CAŁY konkurs? To zamknie sesję dla wszystkich.")) return;
+        
         try {
-            await contestService.finishStage(contestId!);
-            showSuccess("Etap zakończony.");
-            fetchState(); 
-        } catch (e) { showError("Błąd."); }
+            await contestService.closeContest(contestId!, roomState.roomId);
+            showSuccess("Konkurs został zamknięty.");
+            navigate(`/contest/${contestId}`);
+        } catch (e) { 
+            showError("Błąd zamykania konkursu."); 
+        }
     };
 
     if (isLoading) return <CircularProgress sx={{ display: 'block', mx: 'auto', mt: 10 }} />;
     if (!roomState) return <Container sx={{ mt: 4 }}><Alert severity="error">Błąd sesji.</Alert></Container>;
 
     const isOrganizer = contestInfo?.organizer || false;
-    const isJury = contestInfo?.myRoles?.includes('JURY') || false; // ✅ SPRAWDZAMY CZY JURY
+    const isJury = contestInfo?.myRoles?.includes('JURY') || false;
     const isLobby = roomState.currentStagePosition === 0;
 
     return (
@@ -139,8 +146,8 @@ const ContestLivePage: React.FC = () => {
                         <Stack direction="row" justifyContent="space-between" alignItems="center">
                             <Typography variant="subtitle1" fontWeight="bold">PANEL STEROWANIA</Typography>
                             <Stack direction="row" spacing={2}>
-                                <Button variant="outlined" color="warning" startIcon={<StopCircleIcon />} onClick={handleFinishStage}>Stop (Przerwa)</Button>
                                 <Button variant="contained" color="secondary" endIcon={<NextPlanIcon />} onClick={handleNextStage}>Następny Etap</Button>
+                                <Button variant="outlined" color="error" startIcon={<FlagIcon />} onClick={handleCloseContest}>Koniec</Button>
                             </Stack>
                         </Stack>
                     </Container>

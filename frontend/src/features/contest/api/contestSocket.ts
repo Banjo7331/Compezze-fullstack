@@ -2,7 +2,7 @@ import { BaseSocketClient } from '@/shared/api/BaseSocketClient';
 // Importujemy typy, które stworzyliśmy wcześniej (odpowiednik WSMessage / QuizSocketPayload)
 import type { ContestSocketMessage } from '../model/socket.types';
 
-const CONTEST_WS_URL = 'http://localhost:8000/api/v1/contest/ws';
+const CONTEST_WS_URL = 'http://localhost:8000/contest/ws';
 
 // To jest nasz "Payload", dokładnie jak w Quizie
 type ContestSocketPayload = ContestSocketMessage;

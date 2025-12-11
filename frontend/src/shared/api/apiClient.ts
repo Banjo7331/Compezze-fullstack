@@ -77,9 +77,8 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         localStorage.removeItem('accessToken');
-        if (window.location.pathname !== '/login') {
-             window.location.href = '/login';
-        }
+        
+        // window.location.href = '/login';
         
         return Promise.reject(refreshError);
       } finally {

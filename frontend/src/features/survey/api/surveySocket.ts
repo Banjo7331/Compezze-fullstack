@@ -1,7 +1,7 @@
 import { BaseSocketClient } from '@/shared/api/BaseSocketClient';
 import type { WSMessage } from '../model/types'; 
 
-const SURVEY_WS_URL = 'ws://localhost:8003/ws'; 
+const SURVEY_WS_URL = 'ws://localhost:8000/survey/ws'; 
 
 type SurveySocketPayload = WSMessage; 
 
@@ -20,7 +20,7 @@ class SurveySocketClient extends BaseSocketClient<SurveySocketPayload> {
       this.activate();
   }
   public subscribeToRoomUpdates(roomId: string, callback: (data: SurveySocketPayload) => void): string {
-    return this.subscribeToTopic(`/topic/room/${roomId}`, callback); 
+    return this.subscribeToTopic(`/topic/survey/${roomId}`, callback); 
   }
   public unsubscribe(subscriptionId: string): void {
       super.unsubscribe(subscriptionId);
