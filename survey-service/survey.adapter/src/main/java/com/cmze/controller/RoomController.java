@@ -2,6 +2,7 @@ package com.cmze.controller;
 
 import com.cmze.request.CreateSurveyRoomRequest;
 import com.cmze.request.GenerateRoomInvitesRequest;
+import com.cmze.request.GenerateSessionTokenRequest;
 import com.cmze.request.JoinSurveyRoomRequest;
 import com.cmze.request.SubmitSurveyAttemptRequest.SubmitSurveyAttemptRequest;
 import com.cmze.usecase.room.*;
@@ -27,6 +28,7 @@ public class RoomController {
     private final CloseSurveyRoomUseCase closeSurveyRoomUseCase;
     private final GetAllActiveSurveyRoomsUseCase getAllActiveSurveyRoomsUseCase;
     private final InviteUsersForSurveyRoomUseCase inviteUsersForSurveyRoomUseCase;
+    private final GenerateTokenForUserUseCase generateTokenForUserUseCase;
     private final GetSurveyRoomDetailsUseCase getSurveyRoomDetailsUseCase;
     private final GetMySurveyRoomsResultsUseCase getMySurveyRoomsResultsUseCase;
 
@@ -36,6 +38,7 @@ public class RoomController {
                           CloseSurveyRoomUseCase closeSurveyRoomUseCase,
                           GetAllActiveSurveyRoomsUseCase getAllActiveSurveyRoomsUseCase,
                           InviteUsersForSurveyRoomUseCase inviteUsersForSurveyRoomUseCase,
+                          GenerateTokenForUserUseCase generateTokenForUserUseCase,
                           GetSurveyRoomDetailsUseCase getSurveyRoomDetailsUseCase,
                           GetMySurveyRoomsResultsUseCase getMySurveyRoomsResultsUseCase) {
         this.createSurveyRoomUseCase = createSurveyRoomUseCase;
@@ -44,6 +47,7 @@ public class RoomController {
         this.closeSurveyRoomUseCase = closeSurveyRoomUseCase;
         this.getAllActiveSurveyRoomsUseCase = getAllActiveSurveyRoomsUseCase;
         this.inviteUsersForSurveyRoomUseCase = inviteUsersForSurveyRoomUseCase;
+        this.generateTokenForUserUseCase = generateTokenForUserUseCase;
         this.getSurveyRoomDetailsUseCase = getSurveyRoomDetailsUseCase;
         this.getMySurveyRoomsResultsUseCase = getMySurveyRoomsResultsUseCase;
     }
@@ -76,6 +80,18 @@ public class RoomController {
             @PageableDefault(size = 20) final Pageable pageable
     ) {
         final var result = getAllActiveSurveyRoomsUseCase.execute(pageable);
+
+        return result.toResponseEntity(HttpStatus.OK);
+    }
+
+    @PostMapping("/{roomId}/generate-token")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> generateTokenForUser(
+            @PathVariable final UUID roomId,
+            @RequestBody @Valid final GenerateSessionTokenRequest request
+    ) {
+
+        final var result = generateTokenForUserUseCase.execute(roomId, request);
 
         return result.toResponseEntity(HttpStatus.OK);
     }

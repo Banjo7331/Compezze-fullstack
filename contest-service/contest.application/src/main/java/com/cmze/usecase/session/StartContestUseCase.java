@@ -41,7 +41,7 @@ public class StartContestUseCase {
     }
 
     @Transactional
-    public ActionResult<StageSettingsResponse> execute(final Long contestId, final UUID organizerId) {
+    public ActionResult<StageSettingsResponse> execute(final Long contestId, final String roomId, final UUID organizerId) {
         try {
             final var contest = contestRepository.findById(contestId)
                     .orElseThrow(() -> new RuntimeException("Contest not found"));
@@ -71,9 +71,6 @@ public class StartContestUseCase {
             logger.info("Starting contest {} with first stage: {}", contestId, firstStage.getName());
 
             final var stageResponse = stageContext.runStage(firstStage.getId(), firstStage.getType());
-
-            contest.setStatus(ContestStatus.ACTIVE);
-            contestRepository.save(contest);
 
             liveRoom.setCurrentStagePosition(firstStage.getPosition());
             roomRepository.save(liveRoom);

@@ -43,7 +43,7 @@ public class CloseContestUseCase {
     }
 
     @Transactional
-    public ActionResult<Void> execute(final Long contestId, final UUID organizerId) {
+    public ActionResult<Void> execute(final Long contestId, final String roomId, final UUID organizerId) {
         try {
             final var contest = contestRepository.findById(contestId)
                     .orElseThrow(() -> new RuntimeException("Contest not found"));

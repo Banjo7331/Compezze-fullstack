@@ -40,6 +40,7 @@ public class UserController {
 
         return ResponseEntity.ok(user);
     }
+
     @GetMapping("/{userId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserDto> getUserById(@PathVariable UUID userId) {

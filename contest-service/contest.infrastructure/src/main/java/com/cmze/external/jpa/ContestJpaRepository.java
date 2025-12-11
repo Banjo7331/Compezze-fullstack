@@ -21,4 +21,12 @@ public interface ContestJpaRepository extends JpaRepository<Contest, Long> {
                                       @Param("cutoffDate") LocalDateTime cutoffDate,
                                       Pageable pageable);
 
+    @Query("SELECT c FROM Contest c " +
+            "WHERE c.isPrivate = false " +
+            "AND (c.status = 'CREATED' OR c.status = 'DRAFT') " +
+            "AND c.startDate > :now " +
+            "AND (c.participantLimit IS NULL OR (SELECT COUNT(p) FROM Participant p WHERE p.contest = c) < c.participantLimit)")
+    Page<Contest> findPublicContestsToJoin(@Param("now") LocalDateTime now, Pageable pageable);
+
+
 }

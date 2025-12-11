@@ -18,7 +18,7 @@ public interface InternalSurveyApi {
     @PostMapping
     CreateSurveyRoomResponse createRoom(@RequestBody CreateSurveyRoomRequest request);
 
-    @PostMapping("/{roomId}/invites")
+    @PostMapping("/{roomId}/generate-token")
     GenerateSurveyTokenResponse generateToken(
             @PathVariable("roomId") String roomId,
             @RequestBody GenerateSurveyTokenRequest request

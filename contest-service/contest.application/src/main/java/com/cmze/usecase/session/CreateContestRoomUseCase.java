@@ -1,6 +1,7 @@
 package com.cmze.usecase.session;
 
 import com.cmze.entity.Room;
+import com.cmze.enums.ContestStatus;
 import com.cmze.repository.ContestRepository;
 import com.cmze.repository.ParticipantRepository;
 import com.cmze.repository.RoomRepository;
@@ -54,6 +55,9 @@ public class CreateContestRoomUseCase {
 
             final var hostParticipant = participantRepository.findByContestIdAndUserId(contestId, organizerId.toString())
                     .orElseThrow(() -> new IllegalStateException("Host is not a participant (Data integrity error)"));
+
+            contest.setStatus(ContestStatus.ACTIVE);
+            contestRepository.save(contest);
 
             final var room = new Room();
             room.setContest(contest);

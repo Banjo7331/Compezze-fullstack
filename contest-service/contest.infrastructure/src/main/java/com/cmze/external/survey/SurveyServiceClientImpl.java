@@ -1,9 +1,6 @@
 package com.cmze.external.survey;
 
 import com.cmze.external.quiz.QuizServiceClientImpl;
-import com.cmze.spi.quiz.dto.CreateQuizRoomRequest;
-import com.cmze.spi.quiz.dto.GenerateQuizTokenRequest;
-import com.cmze.spi.survey.SurveyRoomDto;
 import com.cmze.spi.survey.SurveyServiceClient;
 import com.cmze.spi.survey.dto.*;
 import feign.FeignException;

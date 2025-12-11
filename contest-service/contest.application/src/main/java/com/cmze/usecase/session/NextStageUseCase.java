@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.UUID;
 
 @UseCase
@@ -46,7 +47,7 @@ public class NextStageUseCase {
     }
 
     @Transactional
-    public ActionResult<StageSettingsResponse> execute(final Long contestId, final UUID organizerId) {
+    public ActionResult<StageSettingsResponse> execute(final Long contestId, final String roomId, final UUID organizerId) {
         try {
             final var contest = contestRepository.findById(contestId)
                     .orElseThrow(() -> new RuntimeException("Contest not found"));
@@ -60,7 +61,9 @@ public class NextStageUseCase {
                 return ActionResult.failure(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Live Room not created. Open the room first."));
             }
             final var liveRoom = liveRoomOpt.get();
-
+            if (!Objects.equals(roomId, liveRoom.getId())) {
+                return ActionResult.failure(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Live Room not created. Open the room first."));
+            }
             final int currentPosition = liveRoom.getCurrentStagePosition() != null ? liveRoom.getCurrentStagePosition() : 0;
 
             if (currentPosition > 0) {

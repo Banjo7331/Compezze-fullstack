@@ -8,7 +8,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -40,6 +39,11 @@ public class ContestRepositoryImpl implements ContestRepository{
     @Override
     public Page<Contest> findUpcomingForUser(String userId, LocalDateTime cutOffDate, Pageable pageable) {
         return impl.findUpcomingForUser(userId, cutOffDate, pageable);
+    }
+
+    @Override
+    public Page<Contest> findPublicContestsToJoin(LocalDateTime now,Pageable pageable) {
+        return impl.findPublicContestsToJoin(now, pageable);
     }
 
 }

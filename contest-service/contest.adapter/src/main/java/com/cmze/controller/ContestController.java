@@ -23,6 +23,7 @@ import java.util.UUID;
 public class ContestController {
 
     private final CreateContestUseCase createContestUseCase;
+    private final GetPublicContestsUseCase getPublicContestsUseCase;
     private final GetUpcomingContestUseCase getUpcomingContestUseCase;
     private final GetMyEnteredContestsUseCase getMyEnteredContestsUseCase;
     private final ManageContestRolesUseCase manageContestRolesUseCase;
@@ -31,6 +32,7 @@ public class ContestController {
     private final CloseSubmissionsEnteringUseCase closeSubmissionsEnteringUseCase;
 
     public ContestController(CreateContestUseCase createContestUseCase,
+                             GetPublicContestsUseCase getPublicContestsUseCase,
                              GetUpcomingContestUseCase getUpcomingContestUseCase,
                              GetMyEnteredContestsUseCase getMyEnteredContestsUseCase,
                              ManageContestRolesUseCase manageContestRolesUseCase,
@@ -39,6 +41,7 @@ public class ContestController {
                              CloseSubmissionsEnteringUseCase closeSubmissionsEnteringUseCase
     ) {
         this.createContestUseCase = createContestUseCase;
+        this.getPublicContestsUseCase = getPublicContestsUseCase;
         this.getUpcomingContestUseCase = getUpcomingContestUseCase;
         this.getMyEnteredContestsUseCase = getMyEnteredContestsUseCase;
         this.manageContestRolesUseCase = manageContestRolesUseCase;
@@ -57,6 +60,15 @@ public class ContestController {
         final var result = createContestUseCase.execute(request, organizerId.toString());
 
         return result.toResponseEntity(HttpStatus.CREATED);
+    }
+
+    @GetMapping
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> getPublicContests(
+            @PageableDefault(size = 10, sort = "startDate") final Pageable pageable
+    ) {
+        final var result = getPublicContestsUseCase.execute(pageable);
+        return result.toResponseEntity(HttpStatus.OK);
     }
 
     @GetMapping("/upcoming")
