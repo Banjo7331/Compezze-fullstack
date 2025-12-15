@@ -1,5 +1,6 @@
 import { apiClient } from '@/shared/api/apiClient';
 import type { CreateSurveyFormRequest, CreateRoomRequest, SurveyFormResponse, RoomResponse, JoinSurveyRoomResponse, SubmitParticipantAnswerRequest, SubmitSurveyAttemptRequest, SurveyRoomDetailsResponse, ActiveRoomResponse, MySurveyFormDto, MySurveyRoomDto } from '../model/types';
+import type { SurveyParams } from '../model/specification';
 
 export interface Page<T> {
     content: T[];
@@ -8,6 +9,7 @@ export interface Page<T> {
     size: number;
     number: number;
 }
+
 
 export interface PageableParams {
     page?: number;
@@ -25,7 +27,7 @@ export const surveyService = {
     const response = await apiClient.get<SurveyFormResponse>(`/survey/room/${roomId}/form`);
     return response.data;
   },
-  getAllForms: async (params?: PageableParams) => {
+  getAllForms: async (params?: SurveyParams) => {
     const response = await apiClient.get<Page<SurveyFormResponse>>('/survey/form', { params });
     return response.data;
   },
@@ -51,7 +53,7 @@ export const surveyService = {
     const response = await apiClient.post<RoomResponse>('/survey/room', data);
     return response.data;
   },
-  getActiveRooms: async (params?: PageableParams) => {
+  getActiveRooms: async (params?: SurveyParams) => {
     const response = await apiClient.get<Page<ActiveRoomResponse>>('/survey/room/active', { params });
     return response.data;
   },

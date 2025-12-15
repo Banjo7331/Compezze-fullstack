@@ -243,7 +243,7 @@ export const ContestCreateForm: React.FC<ContestCreateFormProps> = ({ onCancel, 
         switch (type) {
             case 'QUIZ': return <SportsEsportsIcon color="warning" />;
             case 'SURVEY': return <PollIcon color="info" />;
-            case 'JURY_VOTING': return <GavelIcon color="error" />;
+            case 'JURY_VOTE': return <GavelIcon color="error" />;
             case 'PUBLIC_VOTE': return <PublicIcon color="success" />;
             default: return <CategoryIcon color="disabled" />;
         }
@@ -364,7 +364,7 @@ export const ContestCreateForm: React.FC<ContestCreateFormProps> = ({ onCancel, 
                                 >
                                     <MenuItem value="QUIZ">Quiz (Gra na żywo)</MenuItem>
                                     <MenuItem value="SURVEY">Ankieta (Opinie)</MenuItem>
-                                    <MenuItem value="JURY_VOTING">Głosowanie Jury</MenuItem>
+                                    <MenuItem value="JURY_VOTE">Głosowanie Jury</MenuItem>
                                     <MenuItem value="PUBLIC_VOTE">Głosowanie Publiczne</MenuItem>
                                     <MenuItem value="GENERIC">Inne</MenuItem>
                                 </Select>

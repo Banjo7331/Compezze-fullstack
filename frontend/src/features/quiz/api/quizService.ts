@@ -12,6 +12,8 @@ import type {
     SubmitAnswerResponse
 } from '../model/types';
 
+import type { QuizParams } from '../model/specification';
+
 const BASE_URL = '/quiz'; 
 
 export const quizService = {
@@ -23,7 +25,7 @@ export const quizService = {
         const response = await apiClient.get<Page<MyQuizFormDto>>(`${BASE_URL}/form/my`, { params });
         return response.data;
     },
-    getAllForms: async (params: PageableParams) => {
+    getAllForms: async (params: QuizParams) => {
         const response = await apiClient.get<Page<GetQuizFormSummaryResponse>>(`${BASE_URL}/form`, { params });
         return response.data;
     },
@@ -52,7 +54,7 @@ export const quizService = {
         const response = await apiClient.get<GetQuizRoomDetailsResponse>(`${BASE_URL}/room/${roomId}`);
         return response.data;
     },
-    getActiveRooms: async (params: PageableParams) => {
+    getActiveRooms: async (params: QuizParams) => {
         const response = await apiClient.get<Page<GetActiveQuizRoomResponse>>(`${BASE_URL}/room/active`, { params });
         return response.data;
     },

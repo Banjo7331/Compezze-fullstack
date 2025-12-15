@@ -30,7 +30,7 @@ export const MyEnteredContestsDialog: React.FC<Props> = ({ open, onClose }) => {
             const fetch = async () => {
                 setIsLoading(true);
                 try {
-                    const data = await contestService.getMyContests({ page, size: 5, sort: 'startDate,asc' });
+                    const data = await contestService.getMyParticipatedContests({ page, size: 5, sort: 'startDate,asc' });
                     setContests(data.content);
                     setTotalPages(data.totalPages);
                 } catch (e) {

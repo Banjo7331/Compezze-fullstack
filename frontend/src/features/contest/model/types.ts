@@ -159,6 +159,7 @@ export interface SubmissionDto {
     participantName: string;
     status: 'PENDING' | 'APPROVED' | 'REJECTED';
     contentUrl?: string;
+    originalFilename?: string;
     comment?: string;
     createdAt: string;
 }
@@ -186,7 +187,7 @@ export interface SurveyStageSettingsResponse {
 
 export interface JuryStageSettingsResponse {
     stageId: number;
-    type: 'JURY_VOTING';
+    type: 'JURY_VOTE';
     weight: number;
     maxScore: number;
     juryRevealMode: JuryRevealMode;
@@ -214,13 +215,23 @@ export type StageSettingsResponse =
     | PublicStageSettingsResponse 
     | GenericStageSettingsResponse;
 
+
 export interface GetContestRoomDetailsResponse {
     roomId: string;
     active: boolean;
     
-    currentStagePosition: number; // 0 = Lobby
+    currentStagePosition: number;
     currentStageId: number | null;
     
-    // Tutaj TS będzie wiedział, że to może być jeden z powyższych typów
+    leaderboard: ContestLeaderboardEntryDto[];
     currentStageSettings: StageSettingsResponse | null;
 }
+
+export interface ContestLeaderboardEntryDto {
+    userId: string;
+    displayName: string;
+    totalScore: number;
+    rank: number;
+}
+
+

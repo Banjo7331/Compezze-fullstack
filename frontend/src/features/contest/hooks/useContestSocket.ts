@@ -10,7 +10,6 @@ interface UseContestSocketProps {
 export const useContestSocket = ({ contestId, onRefresh }: UseContestSocketProps) => {
     const isMounted = useRef(false);
 
-    // 1. Handler wiadomości
     const handleMessage = useCallback((message: ContestSocketMessage) => {
         console.log("🏆 Contest Socket Event:", message.event, message);
 
@@ -32,24 +31,20 @@ export const useContestSocket = ({ contestId, onRefresh }: UseContestSocketProps
         }
     }, [onRefresh]);
 
-    // 2. Pętla łączenia (Connection Loop)
     useEffect(() => {
         isMounted.current = true;
         if (!contestId) return;
 
         let subscriptionId: string | null = null;
-        // ZMIANA: używamy 'any', tak jak w quizSocket, aby uniknąć błędu NodeJS namespace
         let timeoutId: any;
 
         const connectLoop = () => {
             if (!isMounted.current) return;
 
             if (contestSocket.isConnected()) {
-                // Socket aktywny -> Subskrybujemy
                 console.log(`Subscribing to contest: ${contestId}`);
                 subscriptionId = contestSocket.subscribeToContest(contestId, handleMessage);
             } else {
-                // Socket nieaktywny -> Próbujemy połączyć i sprawdzamy ponownie za 500ms
                 contestSocket.connectAndSubscribe(); 
                 timeoutId = setTimeout(connectLoop, 500);
             }
@@ -57,7 +52,6 @@ export const useContestSocket = ({ contestId, onRefresh }: UseContestSocketProps
 
         connectLoop();
 
-        // Cleanup
         return () => {
             isMounted.current = false;
             clearTimeout(timeoutId);

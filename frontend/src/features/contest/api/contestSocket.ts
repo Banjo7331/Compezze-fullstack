@@ -32,6 +32,21 @@ class ContestSocketClient extends BaseSocketClient<ContestSocketPayload> {
   public unsubscribe(subscriptionId: string): void {
       super.unsubscribe(subscriptionId);
   }
+
+  public sendChatMessage(contestId: string, content: string, senderName: string): void {
+      if (!this.isActive()) {
+          console.warn('[Contest] Cannot send message: Socket disconnected');
+          return;
+      }
+
+      this.client.publish({
+          destination: `/app/chat/${contestId}/send`, 
+          body: JSON.stringify({ 
+              content, 
+              senderName
+          })
+      });
+  }
 }
 
 export const contestSocket = new ContestSocketClient();

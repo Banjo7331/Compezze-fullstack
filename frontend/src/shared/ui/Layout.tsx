@@ -9,6 +9,9 @@ import { useSurveyInviteListener } from '@/features/survey/hooks/useSurveyInvite
 import { quizSocket } from '@/features/quiz/api/quizSocket';
 import { useQuizInviteListener } from '@/features/quiz/hooks/useQuizInviteListener';
 
+import { contestSocket } from '@/features/contest/api/contestSocket';
+import { useContestInviteListener } from '@/features/contest/hooks/useContestInviteListener';
+
 import { NotificationCenter } from '@/shared/ui/NotificationCenter';
 import { useAuth } from '@/features/auth/AuthContext';
 
@@ -28,15 +31,22 @@ export const Layout = () => {
           quizSocket.activate();
       }
 
+      if (!contestSocket.isActive()) {
+          console.log("[Layout] Activating Contest Socket...");
+          quizSocket.activate();
+      }
+
     } else {
       if (surveySocket.isActive()) surveySocket.deactivate();
       if (quizSocket.isActive()) quizSocket.deactivate();
+      if (contestSocket.isActive()) contestSocket.deactivate();
     }
     
   }, [currentUserId]);
 
   useSurveyInviteListener({ autoRedirect: false });
   useQuizInviteListener({ autoRedirect: false });
+  useContestInviteListener({ autoRedirect: false });
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>

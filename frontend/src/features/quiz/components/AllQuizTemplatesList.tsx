@@ -1,154 +1,99 @@
-import React, { useState, useEffect } from 'react';
+// features/quiz/components/AllQuizTemplatesList.tsx
+
+import React, { useEffect, useState } from 'react';
 import { 
-    Box, Typography, Paper, Stack, Pagination, CircularProgress, Alert, Chip, Tooltip
+    Box, List, ListItem, ListItemText, ListItemButton, 
+    CircularProgress, Alert, Pagination, TextField, InputAdornment, Typography 
 } from '@mui/material';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import PublicIcon from '@mui/icons-material/Public';
-import LockIcon from '@mui/icons-material/Lock';
-import { useNavigate } from 'react-router-dom';
+import SearchIcon from '@mui/icons-material/Search';
+import DescriptionIcon from '@mui/icons-material/Description';
 
 import { quizService } from '../api/quizService';
-import { useSnackbar } from '@/app/providers/SnackbarProvider';
-import { Button } from '@/shared/ui/Button';
-import type { GetQuizFormSummaryResponse, CreateQuizRoomRequest } from '../model/types';
-
-import { StartQuizRoomDialog } from './StartQuizRoomDialog'; 
-
-interface QuizItemProps {
-    form: GetQuizFormSummaryResponse;
-    onStartClick: (id: number) => void;
-}
-
-const QuizItem: React.FC<QuizItemProps> = ({ form, onStartClick }) => {
-    return (
-        <Paper 
-            variant="outlined" 
-            sx={{ 
-                p: 2, 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                borderLeft: `5px solid ${form.isPrivate ? 'gray' : '#ed6c02'}`
-            }}
-        >
-            <Box>
-                <Typography variant="subtitle1" fontWeight="bold">{form.title}</Typography>
-                <Stack direction="row" spacing={1} sx={{ mt: 0.5 }} alignItems="center">
-                    {form.isPrivate ? 
-                        <Chip icon={<LockIcon />} label="Prywatny" size="small" /> : 
-                        <Chip icon={<PublicIcon />} label="Publiczny" size="small" color="warning" variant="outlined" />
-                    }
-                </Stack>
-            </Box>
-            
-            <Box>
-                <Button 
-                    size="small" 
-                    variant="contained" 
-                    color="success" 
-                    startIcon={<PlayArrowIcon />}
-                    onClick={() => onStartClick(form.id)}
-                >
-                    Start
-                </Button>
-            </Box>
-        </Paper>
-    );
-};
+import { useDebounce } from '@/shared/hooks/useDebounce';
+import type { GetQuizFormSummaryResponse } from '../model/types';
+import { useNavigate } from 'react-router-dom';
 
 export const AllQuizTemplatesList: React.FC = () => {
     const navigate = useNavigate();
-    const { showSuccess, showError } = useSnackbar();
-    
     const [forms, setForms] = useState<GetQuizFormSummaryResponse[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
 
-    const [startDialogOpen, setStartDialogOpen] = useState(false);
-    const [selectedFormId, setSelectedFormId] = useState<number | null>(null);
-    const [isStarting, setIsStarting] = useState(false);
+    // ✅ Wyszukiwarka
+    const [search, setSearch] = useState('');
+    const debouncedSearch = useDebounce(search, 500);
 
     useEffect(() => {
-        const loadData = async () => {
-            setIsLoading(true);
+        const fetch = async () => {
+            setLoading(true);
             try {
-                const data = await quizService.getAllForms({ page, size: 10, sort: 'title,asc' });
+                const data = await quizService.getAllForms({ 
+                    page, 
+                    size: 10, 
+                    sort: 'title,asc',
+                    search: debouncedSearch // ✅
+                });
                 setForms(data.content);
                 setTotalPages(data.totalPages);
             } catch (e) {
                 console.error(e);
             } finally {
-                setIsLoading(false);
+                setLoading(false);
             }
         };
-        loadData();
-    }, [page]);
+        fetch();
+    }, [page, debouncedSearch]);
 
-    const handleOpenStartDialog = (id: number) => {
-        setSelectedFormId(id);
-        setStartDialogOpen(true);
-    };
+    useEffect(() => { setPage(0); }, [debouncedSearch]);
 
-    const handleConfirmStart = async (config: { maxParticipants: number }) => {
-        if (!selectedFormId) return;
-        setIsStarting(true);
-        try {
-            const request: CreateQuizRoomRequest = {
-                quizFormId: selectedFormId,
-                maxParticipants: config.maxParticipants,
-                isPrivate: false 
-            };
-            const result = await quizService.createRoom(request);
-            showSuccess("Pokój utworzony!");
-            navigate(`/quiz/room/${result.roomId}`);
-        } catch (e) {
-            showError("Błąd podczas tworzenia pokoju.");
-            setIsStarting(false);
-        }
-    };
-
-    const handlePageChange = (_: any, value: number) => setPage(value - 1);
-
-    if (isLoading) return <CircularProgress sx={{ display: 'block', mx: 'auto', my: 4 }} />;
-
-    if (forms.length === 0) {
-        return (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography color="text.secondary">Brak dostępnych quizów.</Typography>
-            </Box>
-        );
-    }
+    if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>;
 
     return (
-        <Box sx={{ maxHeight: '60vh', overflowY: 'auto', pr: 1 }}>
-            <Stack spacing={2}>
-                {forms.map((form) => (
-                    <QuizItem 
-                        key={form.id} 
-                        form={form} 
-                        onStartClick={handleOpenStartDialog} 
-                    />
-                ))}
-            </Stack>
+        <Box>
+            {/* ✅ Pasek szukania wewnątrz modala */}
+            <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0', bgcolor: '#fafafa' }}>
+                <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="Wpisz nazwę quizu..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon color="action" />
+                            </InputAdornment>
+                        ),
+                    }}
+                />
+            </Box>
 
-            {totalPages > 1 && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-                    <Pagination 
-                        count={totalPages} 
-                        page={page + 1} 
-                        onChange={handlePageChange} 
-                        color="primary" 
-                    />
+            {forms.length === 0 ? (
+                <Box sx={{ p: 4, textAlign: 'center' }}>
+                    <Typography color="text.secondary">Nie znaleziono quizów.</Typography>
                 </Box>
+            ) : (
+                <List sx={{ p: 0 }}>
+                    {forms.map((form) => (
+                        <ListItem key={form.id} disablePadding divider>
+                            <ListItemButton onClick={() => navigate(`/quiz/create/${form.id}`)}>
+                                <DescriptionIcon color="primary" sx={{ mr: 2 }} />
+                                <ListItemText 
+                                    primary={form.title} 
+                                    secondary={form.isPrivate ? "Prywatny" : "Publiczny"} 
+                                />
+                            </ListItemButton>
+                        </ListItem>
+                    ))}
+                </List>
             )}
 
-            <StartQuizRoomDialog 
-                open={startDialogOpen}
-                isLoading={isStarting}
-                onClose={() => setStartDialogOpen(false)}
-                onConfirm={handleConfirmStart}
-            />
+            {totalPages > 1 && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                    <Pagination count={totalPages} page={page + 1} onChange={(_, v) => setPage(v - 1)} />
+                </Box>
+            )}
         </Box>
     );
 };

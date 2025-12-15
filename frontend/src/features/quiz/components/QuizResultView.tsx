@@ -3,8 +3,6 @@ import { Box, Typography, Paper, Button, Divider, Stack, Chip } from '@mui/mater
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import CloseIcon from '@mui/icons-material/Close';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { useNavigate } from 'react-router-dom';
 
 import { QuizRoomStatus } from '../model/types';
 import type { LeaderboardEntryDto } from '../model/socket.types';
@@ -14,7 +12,7 @@ interface QuizResultViewProps {
     isHost: boolean;
     leaderboard: LeaderboardEntryDto[];
     onNext: () => void;
-    onClose: () => void;
+    onClose: () => void; // Host: Zamknij sesję (podczas gry)
 }
 
 export const QuizResultView: React.FC<QuizResultViewProps> = ({ 
@@ -24,7 +22,6 @@ export const QuizResultView: React.FC<QuizResultViewProps> = ({
     onNext, 
     onClose 
 }) => {
-    const navigate = useNavigate();
     const isFinished = status === QuizRoomStatus.FINISHED;
 
     const getRankStyle = (rank: number) => {
@@ -106,57 +103,35 @@ export const QuizResultView: React.FC<QuizResultViewProps> = ({
                 )}
             </Stack>
 
-            {isHost ? (
+            {/* AKCJE HOSTA (TYLKO PODCZAS GRY) */}
+            {isHost && !isFinished && (
                 <Stack direction="row" spacing={2} justifyContent="center">
-                    {!isFinished ? (
-                        <>
-                            <Button 
-                                variant="outlined" 
-                                color="error" 
-                                size="large" 
-                                onClick={onClose}
-                                startIcon={<CloseIcon />}
-                            >
-                                Zakończ Quiz
-                            </Button>
-                            <Button 
-                                variant="contained" 
-                                size="large" 
-                                onClick={onNext}
-                                endIcon={<NavigateNextIcon />}
-                                sx={{ px: 4 }}
-                            >
-                                Następne Pytanie
-                            </Button>
-                        </>
-                    ) : (
-                        <Button 
-                            variant="contained" 
-                            size="large" 
-                            onClick={() => navigate('/quiz')}
-                            startIcon={<ArrowBackIcon />}
-                        >
-                            Wróć do Panelu Hosta
-                        </Button>
-                    )}
+                    <Button 
+                        variant="outlined" 
+                        color="error" 
+                        size="large" 
+                        onClick={onClose}
+                        startIcon={<CloseIcon />}
+                    >
+                        Zakończ Quiz
+                    </Button>
+                    <Button 
+                        variant="contained" 
+                        size="large" 
+                        onClick={onNext}
+                        endIcon={<NavigateNextIcon />}
+                        sx={{ px: 4 }}
+                    >
+                        Następne Pytanie
+                    </Button>
                 </Stack>
-            ) : (
-                <Box>
-                    {isFinished ? (
-                        <Button 
-                            variant="outlined" 
-                            size="large" 
-                            onClick={() => navigate('/quiz/')}
-                            startIcon={<ArrowBackIcon />}
-                        >
-                            Wyjdź z Gry
-                        </Button>
-                    ) : (
-                        <Typography variant="body2" color="text.disabled" sx={{ fontStyle: 'italic' }}>
-                            Czekaj na ruch gospodarza...
-                        </Typography>
-                    )}
-                </Box>
+            )}
+            
+            {/* DLA GRACZA: Jeśli gra trwa, a runda się skończyła -> Info */}
+            {!isHost && !isFinished && (
+                <Typography variant="body2" color="text.disabled" sx={{ fontStyle: 'italic' }}>
+                    Czekaj na ruch gospodarza...
+                </Typography>
             )}
         </Paper>
     );

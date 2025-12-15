@@ -13,6 +13,8 @@ import { MySurveyRoomHistory } from '@/features/survey/components/MySurveyRoomHi
 import { MyQuizTemplatesList } from '@/features/quiz/components/MyQuizTemplatesList';
 import { MyQuizHistory } from '@/features/quiz/components/MyQuizHistory';
 
+import { MyContestsHistory } from '@/features/contest/components/MyContestHistory';
+
 const AccountSettings = () => (
     <Box>
         <Typography variant="h6">Ustawienia Konta</Typography>
@@ -46,9 +48,10 @@ export const ProfilePage: React.FC = () => {
                     sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}
                 >
                     <Tab icon={<AccountCircleIcon />} label="Konto" iconPosition="start" />
-                    <Tab icon={<PollIcon />} label="Ankiety" iconPosition="start" />
+                    <Tab icon={<EmojiEventsIcon />} label="Konkursy" iconPosition="start" />
                     <Tab icon={<QuizIcon />} label="Quizy" iconPosition="start" />
-                    <Tab icon={<EmojiEventsIcon />} label="Konkursy" iconPosition="start" disabled />
+                    <Tab icon={<PollIcon />} label="Ankiety" iconPosition="start" />
+                    
                 </Tabs>
 
                 <Box sx={{ p: 3, flexGrow: 1, bgcolor: '#fafafa' }}>
@@ -58,24 +61,14 @@ export const ProfilePage: React.FC = () => {
                     {tabValue === 1 && (
                         <Box>
                             <Typography variant="h5" gutterBottom sx={{ color: 'text.primary' }}>
-                                Moje Szablony
+                                Moje Konkursy
                             </Typography>
                             <Typography variant="body2" color="text.secondary" paragraph>
-                                Zarządzaj definicjami ankiet. Możesz stąd tworzyć nowe pokoje lub usuwać stare szablony.
+                                Historia organizowanych przez Ciebie wydarzeń. Rozwiń szczegóły, aby zobaczyć przebieg etapów i ostateczny ranking.
                             </Typography>
                             
-                            <MyTemplatesList />
-                            
-                            <Divider sx={{ my: 4 }} />
-                            
-                            <Typography variant="h5" gutterBottom sx={{ color: 'text.primary' }}>
-                                Historia Sesji
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" paragraph>
-                                Przeglądaj uruchomione przez Ciebie pokoje (aktywne i zakończone) oraz ich wyniki.
-                            </Typography>
-                            
-                            <MySurveyRoomHistory />
+                            {/* Tutaj wstawiamy komponent, który stworzyliśmy wcześniej */}
+                            <MyContestsHistory />
                         </Box>
                     )}
 
@@ -97,6 +90,30 @@ export const ProfilePage: React.FC = () => {
                             </Typography>
                             
                             <MyQuizHistory />
+                        </Box>
+                    )}
+
+                    {tabValue === 3 && (
+                        <Box>
+                            <Typography variant="h5" gutterBottom sx={{ color: 'text.primary' }}>
+                                Moje Szablony
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" paragraph>
+                                Zarządzaj definicjami ankiet. Możesz stąd tworzyć nowe pokoje lub usuwać stare szablony.
+                            </Typography>
+                            
+                            <MyTemplatesList />
+                            
+                            <Divider sx={{ my: 4 }} />
+                            
+                            <Typography variant="h5" gutterBottom sx={{ color: 'text.primary' }}>
+                                Historia Sesji
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" paragraph>
+                                Przeglądaj uruchomione przez Ciebie pokoje (aktywne i zakończone) oraz ich wyniki.
+                            </Typography>
+                            
+                            <MySurveyRoomHistory />
                         </Box>
                     )}
 

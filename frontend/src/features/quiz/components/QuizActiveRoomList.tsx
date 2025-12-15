@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Paper, Button, CircularProgress, Stack, Pagination, Chip, Alert } from '@mui/material';
+import { 
+    Box, Typography, Paper, Button, CircularProgress, Stack, Pagination, Chip, Alert, 
+    TextField, InputAdornment 
+} from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
 import MeetingRoomIcon from '@mui/icons-material/MeetingRoom';
+import SearchIcon from '@mui/icons-material/Search'; // ✅
 import { useNavigate } from 'react-router-dom';
 
 import { quizService } from '../api/quizService';
+import { useDebounce } from '@/shared/hooks/useDebounce'; // ✅
 import type { GetActiveQuizRoomResponse } from '../model/types';
 
 export const QuizActiveRoomsList: React.FC = () => {
@@ -18,11 +23,20 @@ export const QuizActiveRoomsList: React.FC = () => {
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
 
+    // ✅ NOWE STANY: Wyszukiwarka
+    const [search, setSearch] = useState('');
+    const debouncedSearch = useDebounce(search, 500);
+
     useEffect(() => {
         const fetchRooms = async () => {
             setIsLoading(true);
             try {
-                const data = await quizService.getActiveRooms({ page, size: 10, sort: 'createdAt,desc' });
+                const data = await quizService.getActiveRooms({ 
+                    page, 
+                    size: 10, 
+                    sort: 'createdAt,desc',
+                    search: debouncedSearch // ✅ Przekazujemy parametr
+                });
                 setRooms(data.content);
                 setTotalPages(data.totalPages);
                 setError(null);
@@ -35,76 +49,94 @@ export const QuizActiveRoomsList: React.FC = () => {
         };
 
         fetchRooms();
-    }, [page]);
+    }, [page, debouncedSearch]); // ✅ Odświeżamy przy zmianie searcha
+
+    // Reset strony po wyszukaniu
+    useEffect(() => { setPage(0); }, [debouncedSearch]);
 
     const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
         setPage(value - 1);
     };
 
-    if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}><CircularProgress /></Box>;
-    if (error) return <Alert severity="error">{error}</Alert>;
-
-    if (rooms.length === 0) {
-        return (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-                <MeetingRoomIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
-                <Typography color="text.secondary">Brak aktywnych gier w tym momencie.</Typography>
-            </Box>
-        );
-    }
-
     return (
         <Box>
-            <Stack spacing={2}>
-                {rooms.map((room) => (
-                    <Paper 
-                        key={room.roomId} 
-                        elevation={2} 
-                        sx={{ 
-                            p: 2, 
-                            borderLeft: '6px solid #ed6c02',
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center' 
-                        }}
-                    >
-                        <Box>
-                            <Typography variant="h6" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <SportsEsportsIcon fontSize="small" color="warning" />
-                                {room.quizTitle}
-                            </Typography>
-                            
-                            <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
-                                <Chip 
-                                    label={room.status === 'LOBBY' ? "W POCZEKALNI" : "GRA TRWA"} 
-                                    color={room.status === 'LOBBY' ? "success" : "warning"} 
-                                    size="small" 
-                                    variant="outlined"
-                                />
+            {/* ✅ SEKCJA WYSZUKIWANIA */}
+            <Box mb={3}>
+                <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="Szukaj gry po nazwie quizu..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon color="action" />
+                            </InputAdornment>
+                        ),
+                    }}
+                    sx={{ bgcolor: 'white', borderRadius: 1 }}
+                />
+            </Box>
 
-                                <Chip 
-                                    icon={<PersonIcon />} 
-                                    label={`${room.participantsCount} / ${room.maxParticipants || '∞'}`} 
-                                    size="small" 
-                                    variant="outlined" 
-                                />
-                                
-                                <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
-                                    ID: {room.roomId}
-                                </Typography>
-                            </Stack>
-                        </Box>
-                        
-                        <Button 
-                            variant="contained" 
-                            color="warning"
-                            onClick={() => navigate(`/quiz/join/${room.roomId}`)}
+            {isLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}><CircularProgress /></Box>
+            ) : error ? (
+                <Alert severity="error">{error}</Alert>
+            ) : rooms.length === 0 ? (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <MeetingRoomIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
+                    <Typography color="text.secondary">
+                        {search ? "Nie znaleziono gier o tej nazwie." : "Brak aktywnych gier w tym momencie."}
+                    </Typography>
+                </Box>
+            ) : (
+                <Stack spacing={2}>
+                    {rooms.map((room) => (
+                        <Paper 
+                            key={room.roomId} 
+                            elevation={2} 
+                            sx={{ 
+                                p: 2, 
+                                borderLeft: '6px solid #ed6c02',
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center' 
+                            }}
                         >
-                            DOŁĄCZ
-                        </Button>
-                    </Paper>
-                ))}
-            </Stack>
+                            <Box>
+                                <Typography variant="h6" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <SportsEsportsIcon fontSize="small" color="warning" />
+                                    {room.quizTitle}
+                                </Typography>
+                                
+                                <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+                                    <Chip 
+                                        label={room.status === 'LOBBY' ? "W POCZEKALNI" : "GRA TRWA"} 
+                                        color={room.status === 'LOBBY' ? "success" : "warning"} 
+                                        size="small" 
+                                        variant="outlined"
+                                    />
+                                    <Chip 
+                                        icon={<PersonIcon />} 
+                                        label={`${room.participantsCount} / ${room.maxParticipants || '∞'}`} 
+                                        size="small" 
+                                        variant="outlined" 
+                                    />
+                                </Stack>
+                            </Box>
+                            
+                            <Button 
+                                variant="contained" 
+                                color="warning"
+                                onClick={() => navigate(`/quiz/join/${room.roomId}`)}
+                            >
+                                DOŁĄCZ
+                            </Button>
+                        </Paper>
+                    ))}
+                </Stack>
+            )}
 
             {totalPages > 1 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>

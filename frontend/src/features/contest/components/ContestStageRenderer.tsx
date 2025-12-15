@@ -4,27 +4,27 @@ import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 
 import type { StageSettingsResponse } from '@/features/contest/model/types';
 
-// ✅ IMPORTY KOMPONENTÓW OSADZONYCH
-import { EmbeddedQuizRoom } from './EmbededQuizRoom';
-import { EmbeddedSurveyRoom } from './EmbededSurveyRoom';
+import { EmbeddedQuizRoom } from './stages/EmbededQuizRoom';
+import { EmbeddedSurveyRoom } from './stages/EmbededSurveyRoom';
 
-// ✅ IMPORTY ETAPÓW GŁOSOWANIA
-import { ContestJuryStage } from './ContestJuryStage';
-import { ContestPublicVoteStage } from './ContestPublicVoteStage';
-import { ContestGenericStage } from './ContestGenericStage';
+import { ContestJuryStage } from './stages/ContestJuryStage';
+import { ContestPublicVoteStage } from './stages/ContestPublicVoteStage';
+import { ContestGenericStage } from './stages/ContestGenericStage';
 
 interface Props {
+    roomId: string;
     settings: StageSettingsResponse;
     isOrganizer: boolean;
     ticket?: string | null;
     
-    // ✅ NOWE PROPSY (wymagane przez etapy głosowania)
     contestId: string;
     isJury: boolean;
+
+    currentSubmission?: any;
 }
 
 export const ContestStageRenderer: React.FC<Props> = ({ 
-    settings, isOrganizer, ticket, contestId, isJury 
+    roomId, settings, isOrganizer, ticket, contestId, isJury 
 }) => {
 
     // --- 1. ETAP: QUIZ ---
@@ -56,10 +56,11 @@ export const ContestStageRenderer: React.FC<Props> = ({
     }
 
     // --- 3. ETAP: JURY ---
-    if (settings.type === 'JURY_VOTING') {
+    if (settings.type === 'JURY_VOTE') {
         return (
             <ContestJuryStage 
                 contestId={contestId} 
+                roomId={roomId}
                 settings={settings} 
                 isOrganizer={isOrganizer} 
                 isJury={isJury} 
@@ -72,6 +73,7 @@ export const ContestStageRenderer: React.FC<Props> = ({
         return (
             <ContestPublicVoteStage 
                 contestId={contestId} 
+                roomId={roomId}
                 settings={settings} 
             />
         );

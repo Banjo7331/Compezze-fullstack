@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, CircularProgress, Alert, Box, Stack, Paper, Typography } from '@mui/material';
+import { Container, CircularProgress, Alert, Box, Stack, Paper, Typography, Grid } from '@mui/material'; // ✅ Dodano Grid
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import NextPlanIcon from '@mui/icons-material/NextPlan';
 import FlagIcon from '@mui/icons-material/Flag';
@@ -13,8 +13,14 @@ import type { GetContestRoomDetailsResponse, ContestDetailsDto } from '@/feature
 
 import { ContestLobbyView } from '@/features/contest/components/ContestLobbyView';
 import { ContestStageRenderer } from '@/features/contest/components/ContestStageRenderer';
+import { ContestLiveChat } from '@/features/contest/components/ContestLiveChat';
+import { ContestLeaderboard } from '@/features/contest/components/ContestLeaderboard';
+import { ContestFinishedView } from '@/features/contest/components/ContestFinishedView';
+
+import { useAuth } from '@/features/auth/AuthContext';
 
 const ContestLivePage: React.FC = () => {
+    const { currentUserId } = useAuth();
     const { contestId } = useParams<{ contestId: string }>();
     const navigate = useNavigate();
     const { showSuccess, showError } = useSnackbar();
@@ -22,8 +28,10 @@ const ContestLivePage: React.FC = () => {
     const [roomState, setRoomState] = useState<GetContestRoomDetailsResponse | null>(null);
     const [contestInfo, setContestInfo] = useState<ContestDetailsDto | null>(null); 
     const [stageTicket, setStageTicket] = useState<string | null>(null);
-    
+
     const [isLoading, setIsLoading] = useState(true);
+    const [isTransitioning, setIsTransitioning] = useState(false);
+    const isFinished = contestInfo?.status === 'FINISHED';
 
     const fetchState = useCallback(async () => {
         try {
@@ -52,7 +60,7 @@ const ContestLivePage: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [contestId, contestInfo]);
+    }, [contestId, contestInfo, showError]);
 
     useEffect(() => {
         if (contestId) fetchState();
@@ -60,14 +68,19 @@ const ContestLivePage: React.FC = () => {
 
     useContestSocket({ 
         contestId, 
-        onRefresh: fetchState 
+        onRefresh: () => {
+            console.log("🔄 Otrzymano sygnał zmiany etapu/stanu!");
+            setIsTransitioning(true);
+            fetchState().then(() => {
+                setIsTransitioning(false);
+            });
+        }
     });
 
     // --- HANDLERY ---
     const handleStartContest = async () => {
-        if (!roomState?.roomId) return; // Zabezpieczenie
+        if (!roomState?.roomId) return;
         try {
-            // Przekazujemy contestId ORAZ roomId (który mamy w stanie)
             await contestService.startContest(contestId!, roomState.roomId);
             showSuccess("Konkurs wystartował!");
             fetchState(); 
@@ -100,61 +113,115 @@ const ContestLivePage: React.FC = () => {
     if (isLoading) return <CircularProgress sx={{ display: 'block', mx: 'auto', mt: 10 }} />;
     if (!roomState) return <Container sx={{ mt: 4 }}><Alert severity="error">Błąd sesji.</Alert></Container>;
 
+    if (isTransitioning) {
+        return (
+            <Container maxWidth="xl" sx={{ py: 4, height: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Box textAlign="center">
+                    <CircularProgress size={60} thickness={4} sx={{ mb: 2 }} />
+                    <Typography variant="h5" fontWeight="bold">Aktualizacja etapu...</Typography>
+                    <Typography color="text.secondary">Pobieranie nowych danych</Typography>
+                </Box>
+            </Container>
+        );
+    }
+
     const isOrganizer = contestInfo?.organizer || false;
     const isJury = contestInfo?.myRoles?.includes('JURY') || false;
     const isLobby = roomState.currentStagePosition === 0;
 
+    if (isFinished) {
+        return (
+            <ContestFinishedView 
+                // Pobieramy leaderboard z roomState (jeśli backend go zwrócił w "trybie finished")
+                // lub pustą tablicę, żeby się nie wywaliło
+                leaderboard={roomState?.leaderboard || []} 
+                currentUserId={currentUserId}
+                contestId={contestId!}
+            />
+        );
+    }
+
     return (
-        <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Container maxWidth="xl" sx={{ py: 4 }}>
+            {/* Przycisk Wyjścia */}
             <Box mb={2}>
                 <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(`/contest/${contestId}`)}>
                     Wyjdź z Live
                 </Button>
             </Box>
 
-            {isLobby ? (
-                <ContestLobbyView isOrganizer={isOrganizer} onStart={handleStartContest} />
-            ) : (
-                <Box>
-                    <Box textAlign="center" mb={4}>
-                         <Typography variant="overline" fontSize="1.2rem" letterSpacing={4} color="text.secondary">
-                             ETAP {roomState.currentStagePosition}
-                         </Typography>
+            {/* ✅ UKŁAD 3-KOLUMNOWY */}
+            <Grid container spacing={2} alignItems="stretch">
+                
+                {/* --- KOLUMNA LEWA: RANKING (3/12) --- */}
+                <Grid size={{ xs: 12, md: 3 }}>
+                    <Box sx={{ height: '100%', maxHeight: 'calc(100vh - 200px)', overflowY: 'hidden' }}>
+                        {roomState?.leaderboard && (
+                            <ContestLeaderboard 
+                                leaderboard={roomState.leaderboard} 
+                                currentUserId={currentUserId} 
+                            />
+                        )}
                     </Box>
+                </Grid>
 
-                    {roomState.currentStageSettings ? (
-                        <ContestStageRenderer 
-                            settings={roomState.currentStageSettings}
-                            isOrganizer={isOrganizer}
-                            ticket={stageTicket}
-                            // ✅ PRZEKAZUJEMY NOWE DANE
-                            contestId={contestId!}
-                            isJury={isJury}
-                        />
+                {/* --- KOLUMNA ŚRODKOWA: SCENA (6/12) --- */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                    {isLobby ? (
+                        <ContestLobbyView isOrganizer={isOrganizer} onStart={handleStartContest} />
                     ) : (
-                        <Paper sx={{ p: 6, textAlign: 'center' }}>
-                            <Typography variant="h4" gutterBottom>Przerwa / Wyniki</Typography>
-                            <Typography color="text.secondary">Oczekuj na rozpoczęcie kolejnego etapu.</Typography>
-                        </Paper>
-                    )}
-                </Box>
-            )}
+                        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            <Box textAlign="center" mb={2}>
+                                 <Typography variant="overline" fontSize="1rem" letterSpacing={3} color="text.secondary">
+                                     ETAP {roomState.currentStagePosition}
+                                 </Typography>
+                            </Box>
 
-            {isOrganizer && !isLobby && (
-                <Paper elevation={10} sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, p: 2, bgcolor: '#212121', color: 'white', zIndex: 1000 }}>
-                    <Container maxWidth="lg">
-                        <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Typography variant="subtitle1" fontWeight="bold">PANEL STEROWANIA</Typography>
-                            <Stack direction="row" spacing={2}>
-                                <Button variant="contained" color="secondary" endIcon={<NextPlanIcon />} onClick={handleNextStage}>Następny Etap</Button>
-                                <Button variant="outlined" color="error" startIcon={<FlagIcon />} onClick={handleCloseContest}>Koniec</Button>
-                            </Stack>
-                        </Stack>
-                    </Container>
-                </Paper>
-            )}
-            
-            {isOrganizer && !isLobby && <Box sx={{ height: 100 }} />}
+                            <Box sx={{ flexGrow: 1, minHeight: '50vh' }}>
+                                {roomState.currentStageSettings ? (
+                                    <ContestStageRenderer 
+                                        roomId={roomState.roomId}
+                                        settings={roomState.currentStageSettings}
+                                        isOrganizer={isOrganizer}
+                                        ticket={stageTicket}
+                                        contestId={contestId!}
+                                        isJury={isJury}
+                                    />
+                                ) : (
+                                    <Paper sx={{ p: 6, textAlign: 'center', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Typography variant="h4" color="text.secondary">Przerwa / Wyniki</Typography>
+                                    </Paper>
+                                )}
+                            </Box>
+
+                            {/* Panel Organizatora (pod sceną) */}
+                            {isOrganizer && (
+                                <Paper elevation={3} sx={{ mt: 3, p: 2, bgcolor: '#212121', color: 'white', borderRadius: 2 }}>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                        <Typography variant="subtitle2" fontWeight="bold">PANEL</Typography>
+                                        <Stack direction="row" spacing={1}>
+                                            <Button size="small" variant="contained" color="secondary" onClick={handleNextStage}>
+                                                Dalej
+                                            </Button>
+                                            <Button size="small" variant="outlined" color="error" onClick={handleCloseContest}>
+                                                Stop
+                                            </Button>
+                                        </Stack>
+                                    </Stack>
+                                </Paper>
+                            )}
+                        </Box>
+                    )}
+                </Grid>
+
+                {/* --- KOLUMNA PRAWA: CZAT (3/12) --- */}
+                <Grid size={{ xs: 12, md: 3 }}>
+                    <Box sx={{ height: '100%', minHeight: '500px', maxHeight: 'calc(100vh - 200px)' }}>
+                         {contestId && <ContestLiveChat contestId={contestId} />}
+                    </Box>
+                </Grid>
+
+            </Grid>
         </Container>
     );
 };

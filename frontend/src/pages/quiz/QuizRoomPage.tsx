@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Container, Box, Alert, TextField, Paper, Typography, CircularProgress } from '@mui/material';
+import { Container, Box, Alert, TextField, Paper, Typography, CircularProgress, Grid } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { Button } from '@/shared/ui/Button';
 
 import { useQuizRoomSocket } from '@/features/quiz/hooks/useQuizRoomSocket';
@@ -163,15 +164,26 @@ const QuizRoomPage: React.FC = () => {
             )}
 
             {status === QuizRoomStatus.LOBBY && (
-                <>
-                    <QuizLobby 
-                        isHost={isHost} 
-                        roomId={roomId}
-                        participants={leaderboard || []} 
-                        onStart={handleStartGame} 
-                    />
-                    {isHost && <Box mt={4}><InviteUsersPanel roomId={roomId} /></Box>}
-                </>
+                <Grid container spacing={4}>
+                    {/* LEWA STRONA: Lista graczy i przycisk start */}
+                    <Grid size={{ xs: 12, md: isHost ? 8 : 12 }}>
+                        <QuizLobby 
+                            isHost={isHost} 
+                            roomId={roomId}
+                            participants={leaderboard || []} 
+                            onStart={handleStartGame} 
+                        />
+                    </Grid>
+
+                    {/* PRAWA STRONA: Panel Zaproszeń (TYLKO HOST) */}
+                    {isHost && (
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <Box sx={{ mt: { xs: 0, md: 14 } }}> {/* Opcjonalny odstęp, żeby wyrównać z ikoną pada */}
+                                <InviteUsersPanel roomId={roomId} />
+                            </Box>
+                        </Grid>
+                    )}
+                </Grid>
             )}
 
             {status === QuizRoomStatus.QUESTION_ACTIVE && currentQuestion && (
@@ -194,13 +206,29 @@ const QuizRoomPage: React.FC = () => {
             )}
 
             {status === QuizRoomStatus.FINISHED && (
-                <QuizResultView 
-                    status={status}
-                    isHost={isHost}
-                    leaderboard={finalResults?.leaderboard || leaderboard || []}
-                    onNext={() => {}}
-                    onClose={() => navigate('/quiz')}
-                />
+                <Box>
+                    <QuizResultView 
+                        status={status}
+                        isHost={isHost}
+                        leaderboard={finalResults?.leaderboard || leaderboard || []}
+                        onNext={() => {}}
+                        onClose={() => {}} // Pusta funkcja, bo QuizResultView już nie ma przycisków dla FINISHED
+                    />
+
+                    {/* ✅ PRZYCISKI WYJŚCIA (Tylko tutaj, w QuizRoomPage) */}
+                    <Box sx={{ mt: 4, textAlign: 'center' }}>
+                        <Button 
+                            variant="contained" 
+                            size="large" 
+                            color={isHost ? "primary" : "secondary"}
+                            onClick={() => navigate('/quiz')}
+                            startIcon={<ArrowBackIcon />}
+                            sx={{ px: 4, py: 1.5, borderRadius: 4 }}
+                        >
+                            {isHost ? "Wróć do Panelu Hosta" : "Wyjdź z Gry"}
+                        </Button>
+                    </Box>
+                </Box>
             )}
 
         </Container>

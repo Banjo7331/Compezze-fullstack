@@ -12,6 +12,8 @@ import type {
     ReviewAction
 } from '../model/types';
 
+import type { PublicContestParams } from '../model/specification';
+
 const BASE_URL = '/contest'; 
 
 interface ReorderStagesRequest {
@@ -24,9 +26,9 @@ export const contestService = {
         const response = await apiClient.post<CreateContestResponse>(BASE_URL, data);
         return response.data;
     },
-    getPublicContests: async (params: PageableParams) => {
-        const response = await apiClient.get<Page<UpcomingContestDto>>(BASE_URL, { params });
-        return response.data;
+    getPublicContests: async (params: PublicContestParams) => {
+        const response = await apiClient.get(`${BASE_URL}/public`, { params });
+        return response.data; 
     },
     updateStage: async (contestId: string, stageId: number, data: any) => {
         await apiClient.put(`${BASE_URL}/${contestId}/stage/${stageId}`, data);
@@ -39,8 +41,14 @@ export const contestService = {
         const response = await apiClient.get<UpcomingContestDto | null>(`${BASE_URL}/upcoming`);
         return response.data;
     },
+
+    getMyParticipatedContests: async (params: PageableParams) => {
+        const response = await apiClient.get<Page<UpcomingContestDto>>(`${BASE_URL}/my/participated`, { params });
+        return response.data;
+    },
+
     getMyContests: async (params: PageableParams) => {
-        const response = await apiClient.get<Page<UpcomingContestDto>>(`${BASE_URL}/my`, { params });
+        const response = await apiClient.get<Page<UpcomingContestDto>>(`${BASE_URL}/my/organized`, { params });
         return response.data;
     },
     getStageAccessUrl: async (stageId: number) => {
@@ -63,7 +71,7 @@ export const contestService = {
         return response.data;
     },
     joinContest: async (id: string) => {
-        await apiClient.post(`${BASE_URL}/${id}/room/${roomId}/join`);
+        await apiClient.post(`${BASE_URL}/${id}/join`);
     },
     getParticipants: async (contestId: string, query?: string) => {
         const response = await apiClient.get<ContestParticipantDto[]>(`${BASE_URL}/${contestId}/participant`, {
