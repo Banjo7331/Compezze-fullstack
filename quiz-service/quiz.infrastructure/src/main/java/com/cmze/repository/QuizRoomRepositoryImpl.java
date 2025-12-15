@@ -4,6 +4,7 @@ import com.cmze.entity.QuizRoom;
 import com.cmze.external.jpa.QuizRoomJpaRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -63,5 +64,10 @@ public class QuizRoomRepositoryImpl implements QuizRoomRepository {
     @Override
     public Page<QuizRoom> findByHostId(UUID hostId, Pageable pageable) {
         return impl.findByHostId(hostId, pageable);
+    }
+
+    @Override
+    public Page<QuizRoom> findAll(Specification<QuizRoom> specification, Pageable pageable) {
+        return impl.findAll(specification, pageable);
     }
 }

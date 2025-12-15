@@ -1,9 +1,11 @@
 package com.cmze.external.jpa;
 
+import com.cmze.entity.QuizForm;
 import com.cmze.entity.QuizRoom;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -12,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface QuizRoomJpaRepository extends JpaRepository<QuizRoom, UUID> {
+public interface QuizRoomJpaRepository extends JpaRepository<QuizRoom, UUID>, JpaSpecificationExecutor<QuizRoom> {
 
     @Query("SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END FROM QuizRoom r WHERE r.quiz.id = :quizFormId AND r.status != 'FINISHED'")
     boolean existsActiveRoomsForQuiz(@Param("quizFormId") Long quizFormId);

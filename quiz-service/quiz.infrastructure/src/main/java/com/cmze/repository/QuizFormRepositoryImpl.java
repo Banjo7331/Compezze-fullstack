@@ -4,6 +4,7 @@ import com.cmze.entity.QuizForm;
 import com.cmze.external.jpa.QuizFormJpaRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -26,6 +27,11 @@ public class QuizFormRepositoryImpl implements QuizFormRepository {
     @Override
     public Optional<QuizForm> findById(Long formId) {
         return impl.findById(formId);
+    }
+
+    @Override
+    public Page<QuizForm> findAll(Specification<QuizForm> finalSpec, Pageable pageable) {
+        return impl.findAll(finalSpec, pageable);
     }
 
     @Override

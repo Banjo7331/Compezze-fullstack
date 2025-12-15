@@ -1,13 +1,18 @@
 package com.cmze.controller;
 
+import com.cmze.entity.QuizForm;
 import com.cmze.request.CreateQuizFormRequest.CreateQuizFormRequest;
 import com.cmze.usecase.form.CreateQuizFormUseCase;
 import com.cmze.usecase.form.DeleteQuizFormUseCase;
 import com.cmze.usecase.form.GetAllQuizFormsUseCase;
 import com.cmze.usecase.form.GetMyQuizFormsUseCase;
 import jakarta.validation.Valid;
+import net.kaczmarzyk.spring.data.jpa.domain.LikeIgnoreCase;
+import net.kaczmarzyk.spring.data.jpa.web.annotation.And;
+import net.kaczmarzyk.spring.data.jpa.web.annotation.Spec;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -51,11 +56,14 @@ public class QuizFormController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getAllQuizzes(
-            final Authentication authentication,
-            @PageableDefault(size = 20, sort = "title") final Pageable pageable
+            @And({
+                    @Spec(path = "title", params = "search", spec = LikeIgnoreCase.class)
+            }) Specification<QuizForm> filters,
+            @PageableDefault(size = 20, sort = "title") final Pageable pageable,
+            final Authentication authentication
     ) {
         final var userId = (UUID) authentication.getPrincipal();
-        final var result = getAllQuizFormsUseCase.execute(userId, pageable);
+        final var result = getAllQuizFormsUseCase.execute(userId, filters, pageable);
 
         return result.toResponseEntity(HttpStatus.OK);
     }

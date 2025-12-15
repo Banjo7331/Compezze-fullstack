@@ -30,3 +30,4 @@ public class CreateQuizRoomRequest {
 
     private List<UUID> allowedUserIds;
 }
+

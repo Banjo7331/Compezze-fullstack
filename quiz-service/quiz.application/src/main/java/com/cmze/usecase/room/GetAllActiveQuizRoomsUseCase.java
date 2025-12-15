@@ -1,14 +1,17 @@
 package com.cmze.usecase.room;
 
+import com.cmze.entity.QuizRoom;
 import com.cmze.repository.QuizEntrantRepository;
 import com.cmze.repository.QuizRoomRepository;
 import com.cmze.response.GetActiveQuizRoomResponse;
 import com.cmze.shared.ActionResult;
+import com.cmze.specification.QuizRoomSpecification;
 import com.cmze.usecase.UseCase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,9 +31,12 @@ public class GetAllActiveQuizRoomsUseCase {
     }
 
     @Transactional(readOnly = true)
-    public ActionResult<Page<GetActiveQuizRoomResponse>> execute(final Pageable pageable) {
+    public ActionResult<Page<GetActiveQuizRoomResponse>> execute(final Specification<QuizRoom> filtersFromUrl, final Pageable pageable) {
         try {
-            final var activeRooms = quizRoomRepository.findAllPublicActiveRooms(pageable);
+            final Specification<QuizRoom> finalSpec = QuizRoomSpecification.publicAndActive()
+                    .and(filtersFromUrl);
+
+            final var activeRooms = quizRoomRepository.findAll(finalSpec, pageable);
 
             final var responsePage = activeRooms.map(room -> {
                 final long participantsCount = entrantRepository.countByQuizRoom_Id(room.getId());

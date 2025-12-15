@@ -1,10 +1,15 @@
 package com.cmze.controller;
 
+import com.cmze.entity.QuizRoom;
 import com.cmze.request.*;
 import com.cmze.usecase.room.*;
 import jakarta.validation.Valid;
+import net.kaczmarzyk.spring.data.jpa.domain.LikeIgnoreCase;
+import net.kaczmarzyk.spring.data.jpa.web.annotation.And;
+import net.kaczmarzyk.spring.data.jpa.web.annotation.Spec;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -196,9 +201,13 @@ public class RoomController {
     @GetMapping("/active")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getActiveRooms(
+            @And({
+                    @Spec(path = "quiz.title", params = "search", spec = LikeIgnoreCase.class)
+            }) Specification<QuizRoom> filters,
             @PageableDefault(size = 20) final Pageable pageable
     ) {
-        final var result = getAllActiveQuizRoomsUseCase.execute(pageable);
+        final var result = getAllActiveQuizRoomsUseCase.execute(filters, pageable);
+
         return result.toResponseEntity(HttpStatus.OK);
     }
 }

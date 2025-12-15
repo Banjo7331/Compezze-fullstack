@@ -4,11 +4,13 @@ import com.cmze.entity.QuizForm;
 import com.cmze.repository.QuizFormRepository;
 import com.cmze.response.GetQuizFormSummaryResponse;
 import com.cmze.shared.ActionResult;
+import com.cmze.specification.QuizFormSpecification;
 import com.cmze.usecase.UseCase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,9 +28,12 @@ public class GetAllQuizFormsUseCase {
     }
 
     @Transactional(readOnly = true)
-    public ActionResult<Page<GetQuizFormSummaryResponse>> execute(final UUID currentUserId, final Pageable pageable) {
+    public ActionResult<Page<GetQuizFormSummaryResponse>> execute(final UUID currentUserId, final Specification<QuizForm> filtersFromUrl, final Pageable pageable) {
         try {
-            final var formsPage = quizFormRepository.findAllPublicAndOwnedByUser(currentUserId, pageable);
+            final Specification<QuizForm> finalSpec = QuizFormSpecification.availableForUser(currentUserId)
+                    .and(filtersFromUrl);
+
+            final var formsPage = quizFormRepository.findAll(finalSpec, pageable);
 
             final var dtoPage = formsPage.map(this::mapToDto);
 

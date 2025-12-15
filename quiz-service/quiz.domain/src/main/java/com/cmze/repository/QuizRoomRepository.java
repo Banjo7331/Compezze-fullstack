@@ -3,6 +3,7 @@ package com.cmze.repository;
 import com.cmze.entity.QuizRoom;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,4 +20,5 @@ public interface QuizRoomRepository {
     List<QuizRoom> findAllExpiredActiveRooms(LocalDateTime now);
     Page<QuizRoom> findAllPublicActiveRooms(Pageable pageable);
     Page<QuizRoom> findByHostId(UUID hostId, Pageable pageable);
+    Page<QuizRoom> findAll(Specification<QuizRoom> specification, Pageable pageable);
 }

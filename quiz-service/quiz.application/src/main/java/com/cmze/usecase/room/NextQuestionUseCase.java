@@ -65,7 +65,6 @@ public class NextQuestionUseCase {
         try {
             final var freshRoom = quizRoomRepository.findByIdWithFullQuizStructure(room.getId()).orElseThrow();
 
-            // Automat działa tylko, jeśli jesteśmy w przerwie (QUESTION_FINISHED)
             if (freshRoom.getStatus() == QuizRoomStatus.QUESTION_FINISHED) {
                 nextQuestionInternal(freshRoom);
             }

@@ -1,5 +1,6 @@
 package com.cmze.usecase.room;
 
+import com.cmze.entity.QuizForm;
 import com.cmze.entity.QuizRoom;
 import com.cmze.enums.QuizRoomStatus;
 import com.cmze.repository.QuizFormRepository;
@@ -25,7 +26,9 @@ public class CreateQuizRoomUseCase {
 
     private static final Logger logger = LoggerFactory.getLogger(CreateQuizRoomUseCase.class);
 
-    private static final int ROOM_TTL_MINUTES = 100;
+    private static final int MAX_SESSION_DURATION_MINUTES = 90;
+
+    private static final int ROOM_TTL_MINUTES_FINAL_COUNTDOWN = 100;
 
     private final QuizFormRepository quizFormRepository;
     private final QuizRoomRepository quizRoomRepository;
@@ -62,6 +65,12 @@ public class CreateQuizRoomUseCase {
                 ));
             }
 
+            final var timeValidationResult = validateQuizTime(form, request.getTimePerQuestion());
+
+            if (timeValidationResult.isFailure()) {
+                return timeValidationResult;
+            }
+
             final var room = new QuizRoom();
             room.setQuiz(form);
             room.setHostId(hostId);
@@ -72,7 +81,7 @@ public class CreateQuizRoomUseCase {
             room.setCreatedAt(LocalDateTime.now());
             room.setPrivate(request.isPrivate());
 
-            room.setValidUntil(LocalDateTime.now().plusMinutes(ROOM_TTL_MINUTES));
+            room.setValidUntil(LocalDateTime.now().plusMinutes(ROOM_TTL_MINUTES_FINAL_COUNTDOWN));
 
             final var savedRoom = quizRoomRepository.save(room);
 
@@ -116,4 +125,23 @@ public class CreateQuizRoomUseCase {
             ));
         }
     }
+
+    private ActionResult<CreateQuizRoomResponse> validateQuizTime(QuizForm quizForm, int timePerQuestion) {
+        int questionCount = quizForm.getQuestions() != null ? quizForm.getQuestions().size() : 0;
+
+        long requiredSeconds = (long) questionCount * timePerQuestion;
+        long availableSeconds = MAX_SESSION_DURATION_MINUTES * 60L;
+
+        if (requiredSeconds > availableSeconds) {
+            return ActionResult.failure(ProblemDetail.forStatusAndDetail(
+                    HttpStatus.BAD_REQUEST,
+                    String.format(
+                            "Quiz duration (%d s) exceeds stage limit (%d s). Questions: %d, Time/Q: %ds.",
+                            requiredSeconds, availableSeconds, questionCount, timePerQuestion
+                    )
+            ));
+        }
+        return ActionResult.success(null);
+    }
+
 }
