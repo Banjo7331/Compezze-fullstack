@@ -3,6 +3,7 @@ package com.cmze.repository;
 import com.cmze.entity.SurveyRoom;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
@@ -18,4 +19,5 @@ public interface SurveyRoomRepository {
     List<SurveyRoom> findAllExpiredActiveRooms(LocalDateTime now);
     boolean existsBySurvey_IdAndIsOpenTrue(Long surveyId);
     Page<SurveyRoom> findByUserId(UUID userId, Pageable pageable);
+    Page<SurveyRoom> findAll(Specification<SurveyRoom> specification, Pageable pageable);
 }

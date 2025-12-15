@@ -1,13 +1,18 @@
 package com.cmze.controller;
 
+import com.cmze.entity.SurveyForm;
 import com.cmze.request.CreateSurveyFormRequest;
 import com.cmze.usecase.form.CreateSurveyFormUseCase;
 import com.cmze.usecase.form.DeleteSurveyFormUseCase;
 import com.cmze.usecase.form.GetAllSurveyFormsUseCase;
 import com.cmze.usecase.form.GetMySurveyFormsUseCase;
 import jakarta.validation.Valid;
+import net.kaczmarzyk.spring.data.jpa.domain.LikeIgnoreCase;
+import net.kaczmarzyk.spring.data.jpa.web.annotation.And;
+import net.kaczmarzyk.spring.data.jpa.web.annotation.Spec;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -52,12 +57,15 @@ public class SurveyFormController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getAllSurveyForms(
-            final Authentication authentication,
-            @PageableDefault(size = 20, sort = "title") final Pageable pageable
+            @And({
+                    @Spec(path = "title", params = "search", spec = LikeIgnoreCase.class)
+            }) Specification<SurveyForm> filters,
+            @PageableDefault(size = 20, sort = "title") final Pageable pageable,
+            final Authentication authentication
     ) {
         final var currentUserId = (UUID) authentication.getPrincipal();
 
-        final var result = getAllSurveyFormsUseCase.execute(currentUserId, pageable);
+        final var result = getAllSurveyFormsUseCase.execute(currentUserId, filters, pageable);
 
         return result.toResponseEntity(HttpStatus.OK);
     }
@@ -65,8 +73,9 @@ public class SurveyFormController {
     @GetMapping("/my")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getMyForms(
-            final Authentication authentication,
-            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            final Authentication authentication
+
     ) {
         final var userId = (UUID) authentication.getPrincipal();
 

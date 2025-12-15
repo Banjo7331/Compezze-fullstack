@@ -5,11 +5,13 @@ import com.cmze.repository.SurveyEntrantRepository;
 import com.cmze.repository.SurveyRoomRepository;
 import com.cmze.response.GetActiveSurveyRoomResponse;
 import com.cmze.shared.ActionResult;
+import com.cmze.specification.SurveyRoomSpecification;
 import com.cmze.usecase.UseCase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,9 +31,12 @@ public class GetAllActiveSurveyRoomsUseCase {
     }
 
     @Transactional(readOnly = true)
-    public ActionResult<Page<GetActiveSurveyRoomResponse>> execute(final Pageable pageable) {
+    public ActionResult<Page<GetActiveSurveyRoomResponse>> execute(final Specification<SurveyRoom> filtersFromUrl, final Pageable pageable) {
         try {
-            final var activeRooms = surveyRoomRepository.findAllByIsOpenTrue(pageable);
+            final Specification<SurveyRoom> finalSpec = SurveyRoomSpecification.active()
+                    .and(filtersFromUrl);
+
+            final var activeRooms = surveyRoomRepository.findAll(finalSpec, pageable);
 
             final var responsePage = activeRooms.map(this::mapToDto);
 

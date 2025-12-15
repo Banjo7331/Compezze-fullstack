@@ -5,6 +5,7 @@ import com.cmze.external.jpa.SurveyRoomJpaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -55,5 +56,10 @@ public class SurveyRoomRepositoryImpl implements SurveyRoomRepository{
     @Override
     public Page<SurveyRoom> findByUserId(UUID userId, Pageable pageable) {
         return impl.findByUserId(userId, pageable);
+    }
+
+    @Override
+    public Page<SurveyRoom> findAll(Specification<SurveyRoom> specification, Pageable pageable) {
+        return impl.findAll(specification, pageable);
     }
 }

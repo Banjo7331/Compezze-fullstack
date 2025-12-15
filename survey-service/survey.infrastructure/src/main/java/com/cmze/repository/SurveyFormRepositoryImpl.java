@@ -4,6 +4,7 @@ import com.cmze.entity.SurveyForm;
 import com.cmze.external.jpa.SurveyFormJpaRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -36,6 +37,11 @@ public class SurveyFormRepositoryImpl implements SurveyFormRepository {
     @Override
     public Page<SurveyForm> findByCreatorIdAndDeletedFalse(final UUID creatorId, final Pageable pageable) {
         return impl.findByCreatorIdAndDeletedFalse(creatorId, pageable);
+    }
+
+    @Override
+    public Page<SurveyForm> findAll(Specification<SurveyForm> specification, Pageable pageable) {
+        return impl.findAll(specification, pageable);
     }
 
     @Override

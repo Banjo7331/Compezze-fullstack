@@ -1,9 +1,11 @@
 package com.cmze.external.jpa;
 
+import com.cmze.entity.SurveyForm;
 import com.cmze.entity.SurveyRoom;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -12,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface SurveyRoomJpaRepository extends JpaRepository<SurveyRoom, UUID> {
+public interface SurveyRoomJpaRepository extends JpaRepository<SurveyRoom, UUID>, JpaSpecificationExecutor<SurveyRoom> {
     @Query("SELECT sr FROM SurveyRoom sr " +
             "LEFT JOIN FETCH sr.survey s " +
             "LEFT JOIN FETCH s.questions q " +
