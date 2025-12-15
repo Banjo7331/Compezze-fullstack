@@ -124,4 +124,8 @@ public class JwtTokenProvider {
     public long getJwtRefreshExpirationDate() {
         return jwtRefreshExpirationDate;
     }
+
+    public Date getExpirationDateFromToken(String token) {
+        return getAllClaims(token).getExpiration();
+    }
 }

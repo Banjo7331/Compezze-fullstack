@@ -1,5 +1,6 @@
 package com.cmze.security;
 
+import com.cmze.util.TokenBlackListUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,10 +22,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
+    private final TokenBlackListUtil tokenBlackListUtil;
 
-    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, UserDetailsService userDetailsService) {
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider,
+                                   UserDetailsService userDetailsService,
+                                   TokenBlackListUtil tokenBlackListUtil) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.userDetailsService = userDetailsService;
+        this.tokenBlackListUtil = tokenBlackListUtil;
     }
 
     @Override
@@ -33,6 +38,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = getTokenFromRequest(request);
 
         if(StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
+
+            if (tokenBlackListUtil.isTokenBlacklisted(token)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
 
             UUID userId = jwtTokenProvider.getUserId(token);
             String username = jwtTokenProvider.getUsername(token);
@@ -44,13 +54,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     null,
                     userDetails.getAuthorities()
             );
-
-//            List<String> roles = jwtTokenProvider.getRoles(token);
-//
-//            List<GrantedAuthority> authorities = roles.stream()
-//                    .map(SimpleGrantedAuthority::new)
-//                    .collect(Collectors.toList());
-
 
             authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 

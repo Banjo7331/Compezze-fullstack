@@ -7,6 +7,7 @@ import com.cmze.dto.request.RegisterRequest;
 import com.cmze.dto.response.auth.JwtAuthResponse;
 import com.cmze.service.AuthService;
 import com.cmze.util.RefreshTokenUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -69,13 +70,17 @@ public class AuthController {
 
     @PostMapping("/logout")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<String> logout(Authentication authentication) {
-        authService.logout(authentication);
-        ResponseCookie cookie = refreshTokenUtil.createEmptyCookie();
+    public ResponseEntity<?> logout(HttpServletRequest request, Authentication authentication) {
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body("User logged out successfully!");
+        String bearerToken = request.getHeader("Authorization");
+
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            String token = bearerToken.substring(7);
+
+            authService.logout(token, authentication);
+        }
+
+        return ResponseEntity.ok("Pomyślnie wylogowano");
     }
 
     @PostMapping("/change-password")
