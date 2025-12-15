@@ -123,12 +123,16 @@ services:
       - EUREKA_URI=http://eureka-client:admin123@eureka-server:8761/eureka/
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/contests
       - SPRING_CONFIG_ADDITIONAL_LOCATION=file:/app/secret.properties
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
     volumes:
       - ./identity-service/src/main/resources/secret.properties:/app/secret.properties
     depends_on:
       eureka-server:
         condition: service_healthy
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   # QUIZ SERVICE
