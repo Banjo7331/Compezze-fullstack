@@ -4,6 +4,7 @@ import com.cmze.request.VoteRequest;
 import com.cmze.shared.ActionResult;
 import com.cmze.spi.VotingContext;
 import com.cmze.usecase.UseCase;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -16,7 +17,8 @@ public class VoteSubmissionUseCase {
         this.votingContext = votingContext;
     }
 
-    public ActionResult<Void> execute(Long contestId, UUID userId, VoteRequest request) {
+    @Transactional
+    public ActionResult<Void> execute(Long contestId, String roomId, UUID userId, VoteRequest request) {
         return votingContext.executeVote(contestId, userId, request);
     }
 }

@@ -1,7 +1,9 @@
 package com.cmze.usecase.submission;
 
 import com.cmze.enums.ContestRole;
+import com.cmze.enums.ContestStatus;
 import com.cmze.enums.SubmissionStatus;
+import com.cmze.repository.ContestRepository;
 import com.cmze.repository.ParticipantRepository;
 import com.cmze.repository.SubmissionRepository;
 import com.cmze.response.GetSubmissionResponse;
@@ -24,11 +26,14 @@ public class ListSubmissionsForReviewUseCase {
 
     private final SubmissionRepository submissionRepo;
     private final ParticipantRepository participantRepo;
+    private final ContestRepository contestRepo;
 
     public ListSubmissionsForReviewUseCase(final SubmissionRepository submissionRepo,
-                                           final ParticipantRepository participantRepo) {
+                                           final ParticipantRepository participantRepo,
+                                           final ContestRepository contestRepo) {
         this.submissionRepo = submissionRepo;
         this.participantRepo = participantRepo;
+        this.contestRepo = contestRepo;
     }
 
     @Transactional(readOnly = true)
@@ -38,19 +43,40 @@ public class ListSubmissionsForReviewUseCase {
                                                              final Pageable pageable) {
         try {
 
+            final var contestOpt = contestRepo.findById(contestId);
+
+            if (contestOpt.isEmpty()) {
+                return ActionResult.failure(ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "Contest not found"));
+            }
+
+            final var contest = contestOpt.get();
+
             final var reviewerOpt = participantRepo.findByContestIdAndUserId(contestId, reviewerId.toString());
 
-            boolean isAllowed = reviewerOpt.isPresent() && (
-                    reviewerOpt.get().getRoles().contains(ContestRole.MODERATOR) ||
-                            reviewerOpt.get().getRoles().contains(ContestRole.ORGANIZER)
-            );
+            if (reviewerOpt.isEmpty()) {
+                return ActionResult.failure(ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "User is not a participant."));
+            }
 
-            if (!isAllowed) {
-                return ActionResult.failure(ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Access denied. Moderator role required."));
+            final var participant = reviewerOpt.get();
+            final var roles = participant.getRoles();
+
+            boolean isStaff = roles.contains(ContestRole.ORGANIZER) ||
+                    roles.contains(ContestRole.MODERATOR) ||
+                    roles.contains(ContestRole.JURY);
+
+            if (!ContestStatus.ACTIVE.equals(contest.getStatus()) && !isStaff) {
+                return ActionResult.failure(ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN,
+                        "Contest is not active yet. Submissions are hidden for participants."));
+            }
+
+            SubmissionStatus effectiveStatus = status;
+
+            if (!isStaff) {
+                effectiveStatus = SubmissionStatus.APPROVED;
             }
 
             final var pageResult = (status != null)
-                    ? submissionRepo.findByContest_IdAndStatus(contestId, status, pageable)
+                    ? submissionRepo.findByContest_IdAndStatus(contestId, effectiveStatus, pageable)
                     : submissionRepo.findByContest_Id(contestId, pageable);
 
             final var dtoPage = pageResult.map(s -> new GetSubmissionResponse(

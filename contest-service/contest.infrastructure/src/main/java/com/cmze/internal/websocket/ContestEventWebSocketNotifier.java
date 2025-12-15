@@ -8,6 +8,8 @@ import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+
 @Service
 public class ContestEventWebSocketNotifier {
 
@@ -84,6 +86,46 @@ public class ContestEventWebSocketNotifier {
         final var payload = new ContestFinishedSocketMessage(event.getContestId());
 
         logger.info("WS: Contest finished {}", event.getContestId());
+        messagingTemplate.convertAndSend(topic, payload);
+    }
+
+    @EventListener
+    public void handleInvitationsGenerated(final InvitationsGeneratedEvent event) {
+        logger.info("Processing invitations for contest {} ({} users)",
+                event.getContestId(), event.getInvitations().size());
+
+        event.getInvitations().forEach((userId, token) -> {
+
+            final var payload = new InvitationSocketMessage(
+                    event.getContestId(),
+                    event.getContestTitle(),
+                    token,
+                    event.getInviterName()
+            );
+
+            try {
+                messagingTemplate.convertAndSendToUser(
+                        userId,
+                        "/queue/invitations",
+                        payload
+                );
+            } catch (Exception e) {
+                logger.error("Failed to send invitation to user {}", userId, e);
+            }
+        });
+    }
+
+    @EventListener
+    public void handleChatMessage(final ContestChatMessageEvent event) {
+        final var topic = "/topic/contest/" + event.getContestId();
+
+        final var payload = new ChatSocketMessage(
+                event.getUserId(),
+                event.getUserDisplayName(),
+                event.getContent(),
+                event.getTimestamp()
+        );
+
         messagingTemplate.convertAndSend(topic, payload);
     }
 }

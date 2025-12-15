@@ -1,39 +1,38 @@
 package com.cmze.internal.service.stagesettings.strategy.impl;
 
 import com.cmze.entity.Stage;
+import com.cmze.entity.Submission;
 import com.cmze.entity.stagesettings.JuryVoteStage;
 import com.cmze.enums.StageType;
+import com.cmze.external.redis.VoteRedisService;
 import com.cmze.internal.service.stagesettings.strategy.StageSettingsStrategy;
 import com.cmze.repository.StageRepository;
-import com.cmze.repository.VoteMarkerRepository;
+import com.cmze.repository.SubmissionRepository;
 import com.cmze.request.StageRequest;
 import com.cmze.request.UpdateStageRequest;
 import com.cmze.response.stagesettings.JuryVotingSettingsResponse;
 import com.cmze.response.stagesettings.StageSettingsResponse;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
 public class JuryStageSettingsStrategy implements StageSettingsStrategy {
 
     private final StageRepository stageRepository;
-    private final VoteMarkerRepository voteMarkerRepository;
-    private final StringRedisTemplate redisTemplate;
+    private final SubmissionRepository submissionRepository;
+    private final VoteRedisService voteRedisService;
 
     public JuryStageSettingsStrategy(final StageRepository stageRepository,
-                                     final VoteMarkerRepository voteMarkerRepository,
-                                     final StringRedisTemplate redisTemplate) {
+                                     final SubmissionRepository submissionRepository,
+                                     final StringRedisTemplate redisTemplate, VoteRedisService voteRedisService) {
         this.stageRepository = stageRepository;
-        this.voteMarkerRepository = voteMarkerRepository;
-        this.redisTemplate = redisTemplate;
+        this.submissionRepository = submissionRepository;
+        this.voteRedisService = voteRedisService;
     }
 
     @Override
@@ -101,30 +100,29 @@ public class JuryStageSettingsStrategy implements StageSettingsStrategy {
 
     @Override
     public Map<UUID, Double> finishStage(final Stage stage) {
-        if (!(stage instanceof JuryVoteStage juryStage)) throw new IllegalStateException("Wrong type");
-
+        if (!(stage instanceof JuryVoteStage juryStage)) {
+            throw new IllegalStateException("Wrong type for JuryVotingStrategy");
+        }
         final double weight = juryStage.getWeight();
-        final String redisKey = "contest:stage:" + stage.getId() + ":scores";
 
-        Set<ZSetOperations.TypedTuple<String>> redisResults = redisTemplate.opsForZSet().rangeWithScores(redisKey, 0, -1);
+        Map<String, Double> rawScores = voteRedisService.getAllScores(stage.getId());
 
-        if (redisResults != null && !redisResults.isEmpty()) {
-            return redisResults.stream()
-                    .collect(Collectors.toMap(
-                            tuple -> UUID.fromString(tuple.getValue()),
-                            tuple -> (tuple.getScore() != null ? tuple.getScore() : 0.0) * weight
-                    ));
+        if (rawScores.isEmpty()) {
+            return Collections.emptyMap();
         }
 
-        final var allVotes = voteMarkerRepository.findAllByStage_Id(stage.getId());
+        List<Submission> submissions = submissionRepository.findAllByIdIn(rawScores.keySet());
 
-        return allVotes.stream()
-                .collect(Collectors.groupingBy(
-                        vote -> UUID.fromString(vote.getSubmission().getParticipant().getUserId()),
-                        Collectors.summingDouble(vote -> {
-                            int score = vote.getScore() != null ? vote.getScore() : 0;
-                            return score * weight;
-                        })
+        return submissions.stream()
+                .collect(Collectors.toMap(
+                        submission -> UUID.fromString(submission.getParticipant().getUserId()),
+
+                        submission -> {
+                            Double rawScore = rawScores.getOrDefault(submission.getId(), 0.0);
+                            return rawScore * weight;
+                        },
+
+                        Double::sum
                 ));
     }
 

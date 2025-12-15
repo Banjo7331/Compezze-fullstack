@@ -14,6 +14,7 @@ import com.cmze.spi.quiz.dto.CreateQuizRoomRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -114,7 +115,8 @@ public class QuizStageSettingsStrategy implements StageSettingsStrategy {
                     stage.getTimePerQuestion(),
                     response.getRoomId()
             );
-
+        } catch (ResponseStatusException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("Failed to start remote Quiz room", e);
         }

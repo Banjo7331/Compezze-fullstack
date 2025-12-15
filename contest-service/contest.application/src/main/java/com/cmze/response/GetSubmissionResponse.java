@@ -1,6 +1,5 @@
 package com.cmze.response;
 
-import com.cmze.entity.Submission;
 import com.cmze.enums.SubmissionStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

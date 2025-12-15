@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -52,5 +53,15 @@ public class SubmissionRepositoryImpl implements SubmissionRepository {
     @Override
     public Optional<Submission> findByContest_IdAndParticipantId(Long contestId, Long participantId) {
         return impl.findByContest_IdAndParticipantId(contestId, participantId);
+    }
+
+    @Override
+    public List<Submission> findAllApprovedByContestId(Long contestId) {
+        return impl.findAllApprovedByContestId(contestId);
+    }
+
+    @Override
+    public List<Submission> findAllByIdIn(Collection<String> ids) {
+        return impl.findAllByIdIn(ids);
     }
 }

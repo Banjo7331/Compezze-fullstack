@@ -14,6 +14,7 @@ import com.cmze.spi.survey.dto.CreateSurveyRoomRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -104,7 +105,8 @@ public class SurveyStageSettingsStrategy implements StageSettingsStrategy {
                     stage.getDurationMinutes(),
                     response.getRoomId().toString()
             );
-
+        } catch (ResponseStatusException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("Failed to start remote Survey room", e);
         }
@@ -136,23 +138,7 @@ public class SurveyStageSettingsStrategy implements StageSettingsStrategy {
         try {
             surveyClient.closeRoom(roomId);
 
-            final var roomDetails = surveyClient.getRoomDetails(roomId);
-
-            final Map<UUID, Double> results = new HashMap<>();
-
-            double weight = 1.0;
-
-            if (roomDetails != null
-                    && roomDetails.getCurrentResults() != null
-                    && roomDetails.getCurrentResults().getLeaderboard() != null) {
-
-                for (final var entry : roomDetails.getCurrentResults().getLeaderboard()) {
-                    double finalScore = entry.getScore() * weight;
-                    results.put(entry.getUserId(), finalScore);
-                }
-            }
-
-            return results;
+            return Collections.emptyMap();
 
         } catch (Exception e) {
             throw new RuntimeException("Failed to finish remote survey room", e);

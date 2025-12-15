@@ -50,8 +50,8 @@ public class StartContestUseCase {
                 return ActionResult.failure(ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Not organizer"));
             }
 
-            if (contest.getStatus() == ContestStatus.FINISHED || contest.getStatus() == ContestStatus.ACTIVE) {
-                return ActionResult.failure(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Contest is already active or finished"));
+            if (contest.getStatus() == ContestStatus.FINISHED) {
+                return ActionResult.failure(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Contest is already finished"));
             }
 
             final var roomOpt = roomRepository.findByContest_Id(contestId);

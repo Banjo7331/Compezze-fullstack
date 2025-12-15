@@ -1,5 +1,6 @@
 package com.cmze.controller;
 
+import com.cmze.request.VoteRequest;
 import com.cmze.usecase.session.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,7 @@ public class RoomController {
     private final GetContestRoomDetailsUseCase getContestRoomDetailsUseCase;
     private final NextStageUseCase nextStageUseCase;
     private final CloseContestUseCase closeContestRoomUseCase;
+    private final VoteSubmissionUseCase voteSubmissionUseCase;
     private final GetStageAccessTokenUseCase getStageAccessTokenUseCase;
 
     public RoomController(CreateContestRoomUseCase createContestRoomUseCase,
@@ -25,12 +27,14 @@ public class RoomController {
                           GetContestRoomDetailsUseCase getContestRoomDetailsUseCase,
                           NextStageUseCase nextStageUseCase,
                           CloseContestUseCase closeContestRoomUseCase,
+                          VoteSubmissionUseCase voteSubmissionUseCase,
                           GetStageAccessTokenUseCase getStageAccessTokenUseCase) {
         this.createContestRoomUseCase = createContestRoomUseCase;
         this.startContestUseCase = startContestUseCase;
         this.getContestRoomDetailsUseCase = getContestRoomDetailsUseCase;
         this.nextStageUseCase = nextStageUseCase;
         this.closeContestRoomUseCase = closeContestRoomUseCase;
+        this.voteSubmissionUseCase = voteSubmissionUseCase;
         this.getStageAccessTokenUseCase = getStageAccessTokenUseCase;
     }
 
@@ -89,6 +93,19 @@ public class RoomController {
     ) {
         final var organizerId = (UUID) authentication.getPrincipal();
         final var result = closeContestRoomUseCase.execute(contestId, roomId, organizerId);
+        return result.toResponseEntity(HttpStatus.NO_CONTENT);
+    }
+
+    @PostMapping("/room/{roomId}/vote")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> vote(
+            @PathVariable final Long contestId,
+            @PathVariable final String roomId,
+            @RequestBody VoteRequest request,
+            final Authentication authentication
+    ) {
+        final var userId = (UUID) authentication.getPrincipal();
+        final var result = voteSubmissionUseCase.execute(contestId, roomId, userId, request);
         return result.toResponseEntity(HttpStatus.NO_CONTENT);
     }
 

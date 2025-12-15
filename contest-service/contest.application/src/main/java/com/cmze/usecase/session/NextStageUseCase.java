@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Comparator;
 import java.util.Objects;
@@ -127,6 +128,11 @@ public class NextStageUseCase {
             ));
 
             return ActionResult.success(stageResponse);
+
+        } catch (ResponseStatusException e) {
+            logger.warn("Business error during stage transition: {}", e.getMessage());
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            return ActionResult.failure(ProblemDetail.forStatusAndDetail(e.getStatusCode(), e.getReason()));
 
         } catch (Exception e) {
             logger.error("Error transitioning to next stage", e);

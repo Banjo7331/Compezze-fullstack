@@ -1,5 +1,6 @@
 package com.cmze.controller;
 
+import com.cmze.entity.Contest;
 import com.cmze.request.CreateContestRequest;
 import com.cmze.request.ManageRoleRequest;
 import com.cmze.usecase.contest.*;
@@ -8,7 +9,13 @@ import com.cmze.usecase.participant.SubmitEntryForContestUseCase;
 import com.cmze.usecase.session.CloseContestUseCase;
 import com.cmze.usecase.session.StartContestUseCase;
 import jakarta.validation.Valid;
+import net.kaczmarzyk.spring.data.jpa.domain.Equal;
+import net.kaczmarzyk.spring.data.jpa.domain.LikeIgnoreCase;
+import net.kaczmarzyk.spring.data.jpa.web.annotation.And;
+import net.kaczmarzyk.spring.data.jpa.web.annotation.Spec;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +30,7 @@ import java.util.UUID;
 public class ContestController {
 
     private final CreateContestUseCase createContestUseCase;
+    private final GetMyContestsUseCase getMyContestsUseCase;
     private final GetPublicContestsUseCase getPublicContestsUseCase;
     private final GetUpcomingContestUseCase getUpcomingContestUseCase;
     private final GetMyEnteredContestsUseCase getMyEnteredContestsUseCase;
@@ -32,6 +40,7 @@ public class ContestController {
     private final CloseSubmissionsEnteringUseCase closeSubmissionsEnteringUseCase;
 
     public ContestController(CreateContestUseCase createContestUseCase,
+                             GetMyContestsUseCase getMyContestsUseCase,
                              GetPublicContestsUseCase getPublicContestsUseCase,
                              GetUpcomingContestUseCase getUpcomingContestUseCase,
                              GetMyEnteredContestsUseCase getMyEnteredContestsUseCase,
@@ -41,6 +50,7 @@ public class ContestController {
                              CloseSubmissionsEnteringUseCase closeSubmissionsEnteringUseCase
     ) {
         this.createContestUseCase = createContestUseCase;
+        this.getMyContestsUseCase = getMyContestsUseCase;
         this.getPublicContestsUseCase = getPublicContestsUseCase;
         this.getUpcomingContestUseCase = getUpcomingContestUseCase;
         this.getMyEnteredContestsUseCase = getMyEnteredContestsUseCase;
@@ -62,12 +72,33 @@ public class ContestController {
         return result.toResponseEntity(HttpStatus.CREATED);
     }
 
-    @GetMapping
+    @GetMapping("/my/organized")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> getPublicContests(
-            @PageableDefault(size = 10, sort = "startDate") final Pageable pageable
+    public ResponseEntity<?> getMyContestsResults(
+            @PageableDefault(size = 10, sort = "startDate", direction = Sort.Direction.DESC) final Pageable pageable,
+            final Authentication authentication
     ) {
-        final var result = getPublicContestsUseCase.execute(pageable);
+        final var userId = UUID.fromString(authentication.getName());
+
+        final var result = getMyContestsUseCase.execute(userId, pageable);
+
+        return result.toResponseEntity(HttpStatus.OK);
+    }
+
+    @GetMapping("/public")
+    public ResponseEntity<?> getPublicContests(
+
+            @And({
+                    @Spec(path = "name", params = "search", spec = LikeIgnoreCase.class),
+                    @Spec(path = "contestCategory", params = "category", spec = Equal.class),
+                    @Spec(path = "status", params = "status", spec = Equal.class)
+            }) Specification<Contest> filters,
+
+            @PageableDefault(size = 10, sort = "startDate") Pageable pageable
+    ) {
+
+        final var result = getPublicContestsUseCase.execute(filters, pageable);
+
         return result.toResponseEntity(HttpStatus.OK);
     }
 
@@ -80,9 +111,9 @@ public class ContestController {
         return result.toResponseEntity(HttpStatus.OK);
     }
 
-    @GetMapping("/my")
+    @GetMapping("/my/participated")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> getMyContests(
+    public ResponseEntity<?> getMyEnteredContests(
             final Authentication authentication,
             @PageableDefault(size = 10, sort = "startDate") final Pageable pageable
     ) {

@@ -3,10 +3,10 @@ package com.cmze.internal.service.voting.strategy.impl;
 import com.cmze.entity.Participant;
 import com.cmze.entity.Stage;
 import com.cmze.entity.Submission;
-import com.cmze.entity.VoteMarker;
 import com.cmze.entity.stagesettings.JuryVoteStage;
 import com.cmze.enums.ContestRole;
 import com.cmze.enums.StageType;
+import com.cmze.external.redis.VoteRedisService;
 import com.cmze.internal.service.voting.strategy.VotingStrategy;
 import com.cmze.repository.*;
 import com.cmze.ws.event.ContestVoteRecordedEvent;
@@ -19,15 +19,12 @@ import java.time.OffsetDateTime;
 @Component
 public class JuryVotingStrategy implements VotingStrategy {
 
-    private final VoteMarkerRepository voteMarkerRepository;
-    private final StringRedisTemplate redisTemplate;
+    private final VoteRedisService voteRedisService;
     private final ApplicationEventPublisher eventPublisher;
 
-    public JuryVotingStrategy(final VoteMarkerRepository voteMarkerRepository,
-                              final StringRedisTemplate redisTemplate,
+    public JuryVotingStrategy(final VoteRedisService voteRedisService,
                               final ApplicationEventPublisher eventPublisher) {
-        this.voteMarkerRepository = voteMarkerRepository;
-        this.redisTemplate = redisTemplate;
+        this.voteRedisService = voteRedisService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -48,30 +45,22 @@ public class JuryVotingStrategy implements VotingStrategy {
             }
         }
 
-        if (voteMarkerRepository.existsByStage_IdAndSubmission_IdAndParticipant_UserId(
-                stage.getId(), submission.getId(), voter.getUserId())) {
+        if (voteRedisService.hasAlreadyVoted(stage.getId(), submission.getId(), voter.getUserId())) {
             throw new IllegalStateException("You have already rated this submission.");
         }
 
-        final var vote = new VoteMarker();
-        vote.setStage(stage);
-        vote.setParticipant(voter);
-        vote.setSubmission(submission);
-        vote.setScore(score);
-        vote.setCreatedAt(OffsetDateTime.now());
+        Double newTotalScore = voteRedisService.registerVote(
+                stage.getId(),
+                submission.getId(),
+                voter.getUserId(),
+                score
+        );
 
-        voteMarkerRepository.save(vote);
-
-        final String redisKey = "contest:stage:" + stage.getId() + ":scores";
-        final String authorId = submission.getParticipant().getUserId();
-
-        final Double currentTotalScore = redisTemplate.opsForZSet().incrementScore(redisKey, authorId, (double) score);
-
-        if (currentTotalScore != null) {
+        if (newTotalScore != null) {
             eventPublisher.publishEvent(new ContestVoteRecordedEvent(
                     stage.getContest().getId().toString(),
                     submission.getId(),
-                    currentTotalScore
+                    newTotalScore
             ));
         }
     }

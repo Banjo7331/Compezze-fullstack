@@ -3,6 +3,8 @@ package com.cmze.usecase.session;
 import com.cmze.entity.Stage;
 import com.cmze.entity.stagesettings.QuizStage;
 import com.cmze.entity.stagesettings.SurveyStage;
+import com.cmze.exception.ExternalStageFinishedException;
+import com.cmze.exception.ExternalStageNotFoundException;
 import com.cmze.repository.ContestRepository;
 import com.cmze.repository.ParticipantRepository;
 import com.cmze.repository.RoomRepository;
@@ -92,16 +94,21 @@ public class GetStageAccessTokenUseCase {
 
                 if (token == null) {
                     return ActionResult.failure(ProblemDetail.forStatusAndDetail(
-                            HttpStatus.BAD_REQUEST, "Could not generate token for this stage type"
+                            HttpStatus.BAD_REQUEST, "Could not generate token"
                     ));
                 }
-
                 return ActionResult.success(token);
 
-            } catch (Exception e) {
-                logger.error("Failed to generate token via InvitationContext", e);
+            } catch (ExternalStageFinishedException e) {
                 return ActionResult.failure(ProblemDetail.forStatusAndDetail(
-                        HttpStatus.INTERNAL_SERVER_ERROR, "Error generating access token"
+                        HttpStatus.CONFLICT, // 409
+                        "Cannot join stage: The session is already finished."
+                ));
+
+            } catch (ExternalStageNotFoundException e) {
+                return ActionResult.failure(ProblemDetail.forStatusAndDetail(
+                        HttpStatus.NOT_FOUND,
+                        "External room not found."
                 ));
             }
 

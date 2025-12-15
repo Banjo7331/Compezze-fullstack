@@ -19,7 +19,7 @@ import lombok.*;
 @JsonSubTypes({
         @JsonSubTypes.Type(value = UpdateStageRequest.UpdateQuizStageRequest.class, name = "QUIZ"),
         @JsonSubTypes.Type(value = UpdateStageRequest.UpdateSurveyStageRequest.class, name = "SURVEY"),
-        @JsonSubTypes.Type(value = UpdateStageRequest.UpdateJuryStageRequest.class, name = "JURY_VOTING"),
+        @JsonSubTypes.Type(value = UpdateStageRequest.UpdateJuryStageRequest.class, name = "JURY_VOTE"),
         @JsonSubTypes.Type(value = UpdateStageRequest.UpdatePublicStageRequest.class, name = "PUBLIC_VOTE"),
         @JsonSubTypes.Type(value = UpdateStageRequest.UpdateGenericStageRequest.class, name = "GENERIC")
 })
