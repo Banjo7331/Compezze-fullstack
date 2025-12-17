@@ -49,7 +49,6 @@ yarn-error.log*
 pnpm-debug.log*
 
 .env
-.env.*
 !.env.example
 secret.properties
 **/secret.properties
