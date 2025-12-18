@@ -24,6 +24,11 @@ services:
   minio:
     image: minio/minio:latest
     container_name: contests_minio
+    hostname: s3.local
+    networks:
+      default:
+        aliases:
+           - s3.local
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
@@ -93,14 +98,14 @@ services:
     ports:
       - "8761:8761"
     environment:
+      - TZ=Europe/Warsaw
       - APP_EUREKA_CLIENT=${EUREKA_CLIENT}
       - APP_EUREKA_CLIENT_PASSWORD=${EUREKA_CLIENT_PASSWORD}
       - APP_EUREKA_ADMIN_PASSWORD=${EUREKA_ADMIN_PASSWORD}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://${EUREKA_CLIENT}:${EUREKA_CLIENT_PASSWORD}@localhost:8761/actuator/health"]
-      interval: 10s
+      test: ["CMD", "curl", "-f", "http://${EUREKA_CLIENT}:${EUREKA_CLIENT_PASSWORD}@eureka-server:8761/actuator/health"]
+      interval: 30s
       retries: 5
-      start_period: 30s
 
   # API GATEWAY
   api-gateway:
@@ -109,6 +114,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - TZ=Europe/Warsaw
       - EUREKA_URI=${EUREKA_URI}
       - FRONTEND_URL=${FRONTEND_ORIGIN}
       - APP_JWT_SECRET=${APP_JWT_SECRET}
@@ -121,6 +127,7 @@ services:
     build: ./identity-service
     container_name: identity-service
     environment:
+      - TZ=Europe/Warsaw
       - EUREKA_URI=${EUREKA_URI}
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
@@ -143,6 +150,7 @@ services:
     build: ./quiz-service
     container_name: quiz-service
     environment:
+      - TZ=Europe/Warsaw
       - EUREKA_URI=${EUREKA_URI}
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
@@ -159,6 +167,7 @@ services:
     build: ./survey-service
     container_name: survey-service
     environment:
+      - TZ=Europe/Warsaw
       - EUREKA_URI=${EUREKA_URI}
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
@@ -175,6 +184,7 @@ services:
     build: ./contest-service
     container_name: contest-service
     environment:
+      - TZ=Europe/Warsaw
       - EUREKA_URI=${EUREKA_URI}
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
@@ -196,6 +206,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    extra_hosts:
+    - "localhost:host-gateway"
 
   # ======== #
   # FRONTEND #

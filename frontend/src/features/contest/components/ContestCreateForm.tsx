@@ -58,7 +58,7 @@ export const ContestCreateForm: React.FC<ContestCreateFormProps> = ({ onCancel, 
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [participantLimit, setParticipantLimit] = useState<string>('100');
-    const [isPrivate, setIsPrivate] = useState(true);
+    const [isPrivate, setIsPrivate] = useState(false);
     const [mediaPolicy, setMediaPolicy] = useState<SubmissionMediaPolicy>('BOTH');
     
     const [resourceOptions, setResourceOptions] = useState<{id: number, title: string}[]>([]);

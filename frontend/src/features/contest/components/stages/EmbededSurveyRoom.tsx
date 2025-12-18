@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, CircularProgress, Alert, Typography } from '@mui/material';
 import { useSnackbar } from '@/app/providers/SnackbarProvider';
 
+import { contestService } from '@/features/contest/api/contestService';
 import { surveyService } from '@/features/survey/api/surveyService';
 import { SurveySubmissionForm } from '@/features/survey/components/SurveySubmissionForm';
 import { LiveResultSurveyDashboard } from '@/features/survey/components/LiveResultSurveyDashboard';
@@ -9,11 +10,13 @@ import type { SurveyFormStructure } from '@/features/survey/model/types';
 
 interface Props {
     roomId: string;
+    contestId: string;
+    contestRoomId: string;
     ticket?: string;
     isHost: boolean;
 }
 
-export const EmbeddedSurveyRoom: React.FC<Props> = ({ roomId, ticket, isHost }) => {
+export const EmbeddedSurveyRoom: React.FC<Props> = ({ roomId, contestId, contestRoomId, ticket, isHost }) => {
     const { showError } = useSnackbar();
     
     const [loading, setLoading] = useState(true);
@@ -31,9 +34,20 @@ export const EmbeddedSurveyRoom: React.FC<Props> = ({ roomId, ticket, isHost }) 
         const joinRoom = async () => {
             setLoading(true);
             try {
-                // Zakładam, że surveyService.joinRoom obsługuje (roomId, ticket)
-                // Jeśli nie, musisz zaktualizować surveyService!
-                const response = await surveyService.joinRoom(roomId, ticket);
+                
+                let tokenToUse = ticket;
+
+                if (!tokenToUse && contestId) {
+                    try {
+                        console.log("Pobieranie tokenu dla ankiety...");
+                        tokenToUse = await contestService.getStageAccessToken(contestId, contestRoomId);
+                    } catch (e) {
+                        console.error("Nie udało się pobrać tokenu ankiety", e);
+                        // Kontynuujemy, surveyService.joinRoom może zwrócić 403, co obsłużymy niżej
+                    }
+                }
+
+                const response = await surveyService.joinRoom(roomId, tokenToUse);
                 
                 if (mounted) {
                     setSurveyForm(response.survey);
@@ -55,7 +69,7 @@ export const EmbeddedSurveyRoom: React.FC<Props> = ({ roomId, ticket, isHost }) 
         }
         
         return () => { mounted = false; };
-    }, [roomId, ticket]);
+    }, [roomId, contestId, contestRoomId, ticket]);
 
     const handleSubmissionSuccess = () => {
         setHasSubmitted(true);

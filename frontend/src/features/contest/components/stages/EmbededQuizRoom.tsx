@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Box, CircularProgress, Alert, TextField, InputAdornment, IconButton, Chip, Stack, Typography } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
+import { contestService } from '@/features/contest/api/contestService';
 import { useQuizRoomSocket } from '@/features/quiz/hooks/useQuizRoomSocket';
 import { quizService } from '@/features/quiz/api/quizService';
 import { QuizRoomStatus } from '@/features/quiz/model/types';
@@ -14,6 +15,8 @@ import { QuizResultView } from '@/features/quiz/components/QuizResultView';
 
 interface Props {
     roomId: string;
+    contestId: string;
+    contestRoomId: string;
     ticket?: string | null;       // ✅ Bilet wstępu (JWT) przekazany z ContestLivePage
     isHost: boolean;
     currentUserNickname?: string; // Nazwa gracza
@@ -21,7 +24,7 @@ interface Props {
 }
 
 export const EmbeddedQuizRoom: React.FC<Props> = ({ 
-    roomId, ticket, isHost, currentUserNickname, onGameEnd 
+   roomId, contestId, contestRoomId, ticket, isHost, currentUserNickname, onGameEnd
 }) => {
     // 1. Hook Logiki Biznesowej (Socket + State)
     const { 
@@ -51,15 +54,22 @@ export const EmbeddedQuizRoom: React.FC<Props> = ({
             }
 
             try {
-                // Jeśli nie mamy nicku, użyjemy domyślnego
-                // W konkursie user jest zalogowany, więc backend Quizu i tak weźmie ID z tokena Auth,
-                // ale 'ticket' jest potrzebny, żeby przejść autoryzację wejścia do prywatnego pokoju.
-                const nick = currentUserNickname || (isHost ? "HOST" : "Uczestnik");
                 
-                console.log(`[EmbeddedQuiz] Attempting join room ${roomId} with ticket: ${ticket ? 'PRESENT' : 'MISSING'}`);
+                const nick = currentUserNickname || (isHost ? "HOST" : "Uczestnik");
+                let tokenToUse = ticket;
 
-                // 🔥 KLUCZOWY MOMENT: Wysyłamy token do API Quizu
-                await quizService.joinRoom(roomId, nick, ticket || undefined);
+                if (!tokenToUse && contestId) {
+                    try {
+                        console.log(`[EmbeddedQuiz] Pobieranie tokenu dla contestId: ${contestId}...`);
+                        tokenToUse = await contestService.getStageAccessToken(contestId, contestRoomId);
+                    } catch (e) {
+                        console.error("Nie udało się pobrać tokenu quizu", e);
+                    }
+                }
+                
+                console.log(`[EmbeddedQuiz] Dołączanie z tokenem: ${tokenToUse ? 'OBECNY' : 'BRAK'}`);
+
+                await quizService.joinRoom(roomId, nick, tokenToUse || undefined);
                 
                 if (mounted) setHasJoined(true);
             } catch (e: any) {
@@ -81,7 +91,7 @@ export const EmbeddedQuizRoom: React.FC<Props> = ({
         }
         
         return () => { mounted = false; };
-    }, [roomId, ticket, isHost, currentUserNickname, hasJoined]);
+    }, [roomId, contestId, contestRoomId, ticket, isHost, currentUserNickname, hasJoined]);
 
     // --- HANDLERY GRY (Reszta bez zmian) ---
 

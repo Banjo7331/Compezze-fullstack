@@ -33,7 +33,9 @@ export const ContestStageRenderer: React.FC<Props> = ({
         return (
             <Box sx={{ mt: 2, width: '100%', border: '1px solid #e0e0e0', borderRadius: 3, overflow: 'hidden', bgcolor: '#fff', boxShadow: 3 }}>
                 <EmbeddedQuizRoom 
-                    roomId={settings.activeRoomId} 
+                    roomId={settings.activeRoomId}
+                    contestId={contestId}
+                    contestRoomId={roomId}
                     ticket={ticket || undefined}
                     isHost={isOrganizer}
                 />
@@ -48,6 +50,8 @@ export const ContestStageRenderer: React.FC<Props> = ({
             <Box sx={{ mt: 2, width: '100%', border: '1px solid #e0e0e0', borderRadius: 3, overflow: 'hidden', bgcolor: '#fff', boxShadow: 3, minHeight: 500 }}>
                 <EmbeddedSurveyRoom 
                     roomId={settings.activeRoomId}
+                    contestId={contestId}
+                    contestRoomId={roomId}
                     ticket={ticket || undefined}
                     isHost={isOrganizer}
                 />

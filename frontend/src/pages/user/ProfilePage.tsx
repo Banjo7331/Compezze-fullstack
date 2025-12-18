@@ -117,7 +117,7 @@ export const ProfilePage: React.FC = () => {
                         </Box>
                     )}
 
-                    {tabValue > 3 && (
+                    {tabValue > 2 && (
                         <Box sx={{ textAlign: 'center', mt: 4 }}>
                             <Typography variant="h6" color="text.disabled">Moduł w trakcie budowy...</Typography>
                         </Box>

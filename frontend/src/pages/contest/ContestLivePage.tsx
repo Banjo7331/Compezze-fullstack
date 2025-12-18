@@ -38,10 +38,8 @@ const ContestLivePage: React.FC = () => {
             const roomData = await contestService.getRoomDetails(contestId!);
             setRoomState(roomData);
             
-            if (!contestInfo) {
-                const infoData = await contestService.getContestDetails(contestId!);
-                setContestInfo(infoData);
-            }
+            const infoData = await contestService.getContestDetails(contestId!);
+            setContestInfo(infoData);
 
             const settings = roomData.currentStageSettings;
             if (settings && (settings.type === 'QUIZ' || settings.type === 'SURVEY') && settings.activeRoomId) {
@@ -60,7 +58,7 @@ const ContestLivePage: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [contestId, contestInfo, showError]);
+    }, [contestId, showError]);
 
     useEffect(() => {
         if (contestId) fetchState();
@@ -132,8 +130,6 @@ const ContestLivePage: React.FC = () => {
     if (isFinished) {
         return (
             <ContestFinishedView 
-                // Pobieramy leaderboard z roomState (jeśli backend go zwrócił w "trybie finished")
-                // lub pustą tablicę, żeby się nie wywaliło
                 leaderboard={roomState?.leaderboard || []} 
                 currentUserId={currentUserId}
                 contestId={contestId!}

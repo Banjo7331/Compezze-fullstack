@@ -35,24 +35,24 @@ public class GenerateTokenForUserUseCase {
             final var roomOpt = surveyRoomRepository.findById(roomId);
 
             if (roomOpt.isEmpty()) {
-                logger.warn("Token generation failed: Quiz Room {} not found", roomId);
+                logger.warn("Token generation failed: Survey Room {} not found", roomId);
                 return ActionResult.failure(ProblemDetail.forStatusAndDetail(
-                        HttpStatus.NOT_FOUND, "Quiz Room not found"
+                        HttpStatus.NOT_FOUND, "Survey Room not found"
                 ));
             }
 
             final var room = roomOpt.get();
 
             if (!room.isOpen() ) {
-                logger.warn("Token generation failed: Quiz Room {} is finished", roomId);
+                logger.warn("Token generation failed: Survey Room {} is finished", roomId);
                 return ActionResult.failure(ProblemDetail.forStatusAndDetail(
-                        HttpStatus.CONFLICT, "Cannot generate token for a finished quiz"
+                        HttpStatus.CONFLICT, "Cannot generate token for a finished survey"
                 ));
             }
 
             final var token = soulboundTokenService.mintInvitationToken(roomId, request.getUserId());
 
-            logger.info("Generated system token for user {} to quiz room {}", request.getUserId(), roomId);
+            logger.info("Generated system token for user {} to survey room {}", request.getUserId(), roomId);
 
             return ActionResult.success(new GenerateSessionTokenResponse(token));
 

@@ -138,7 +138,7 @@ export const contestService = {
 
     getStageAccessToken: async (contestId: string, roomId: string) => {
         const response = await apiClient.get<{ token: string }>(`${BASE_URL}/${contestId}/room/${roomId}/token`);
-        return response.data.token;
+        return response.data;
     },
     vote: async (contestId: string, roomId: string, stageId: number, submissionId: string, score: number) => {
         await apiClient.post(`${BASE_URL}/${contestId}/room/${roomId}/vote`, {

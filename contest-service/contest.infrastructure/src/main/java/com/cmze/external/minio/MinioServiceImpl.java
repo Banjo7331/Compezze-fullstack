@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 @Service
-public class MinioServiceImpl implements MinioService { // Implements the correct interface
+public class MinioServiceImpl implements MinioService {
 
     private static final Logger logger = LoggerFactory.getLogger(MinioServiceImpl.class);
 
@@ -30,6 +30,12 @@ public class MinioServiceImpl implements MinioService { // Implements the correc
 
     @Value("${app.media.presigned-get-ttl:10m}")
     private Duration presignedGetTtl;
+
+    @Value("${minio.endpoint}")
+    private String internalEndpoint;
+
+    @Value("${app.media.publicBaseUrl}")
+    private String publicBaseUrl;
 
     public MinioServiceImpl(MinioClient client) {
         this.client = client;
@@ -83,7 +89,6 @@ public class MinioServiceImpl implements MinioService { // Implements the correc
         }
     }
 
-    // Renamed from 'get' to 'downloadFile'
     @Override
     public GetObjectResponse downloadFile(String bucket, String objectKey) {
         try {
@@ -100,13 +105,17 @@ public class MinioServiceImpl implements MinioService { // Implements the correc
     public URL getPresignedUrlForDisplay(String bucket, String objectKey, Duration expiry) {
         int seconds = toSecondsBounded(expiry != null ? expiry : presignedGetTtl);
         try {
-            String url = client.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
-                    .method(Method.GET)
-                    .bucket(bucket)
-                    .object(objectKey)
-                    .expiry(seconds)
-                    .build());
-            return new URL(url);
+            String presignedUrl = client.getPresignedObjectUrl(
+                    GetPresignedObjectUrlArgs.builder()
+                            .method(Method.GET)
+                            .bucket(bucket)
+                            .object(objectKey)
+                            .expiry(seconds)
+                            .build()
+            );
+
+            return new URL(presignedUrl);
+
         } catch (Exception e) {
             logger.error("Error generating presigned-URL for MinIO: {}/{}", bucket, objectKey, e);
             throw new RuntimeException("Presign GET failed for: " + bucket + "/" + objectKey, e);
