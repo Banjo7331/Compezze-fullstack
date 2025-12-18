@@ -2,8 +2,9 @@ package com.cmze.usecase.resources.icons;
 
 import com.cmze.shared.ActionResult;
 import com.cmze.spi.minio.MinioService;
-import com.cmze.spi.minio.ObjectKeyFactory;
 import com.cmze.usecase.UseCase;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -13,35 +14,35 @@ import java.util.stream.Collectors;
 
 @UseCase
 public class ListAvatarsUseCase {
+
+    private static final Logger logger = LoggerFactory.getLogger(ListAvatarsUseCase.class);
+
     private final MinioService minioService;
-    private final ObjectKeyFactory objectKeyFactory;
 
-    @Value("${app.media.publicBaseUrl:http://localhost:9000}")
-    private String publicBaseUrl;
+    @Value("${app.media.public.bucket:contest-public}")
+    private String publicBucket;
 
-    public ListAvatarsUseCase(MinioService minioService, ObjectKeyFactory objectKeyFactory) {
+    private static final String AVATAR_PREFIX = "avatars/";
+
+    public ListAvatarsUseCase(final MinioService minioService) {
         this.minioService = minioService;
-        this.objectKeyFactory = objectKeyFactory;
     }
 
     public ActionResult<List<String>> execute() {
         try {
-            String bucket = objectKeyFactory.getPublicBucket();
+            final var objectKeys = minioService.listObjectKeys(publicBucket, AVATAR_PREFIX);
 
-            List<String> fileNames = minioService.listFiles(bucket, "avatars/");
-
-            List<String> urls = fileNames.stream()
-                    .map(fileName -> {
-                        String cleanBase = publicBaseUrl.endsWith("/") ?
-                                publicBaseUrl.substring(0, publicBaseUrl.length() - 1) : publicBaseUrl;
-                        return cleanBase + "/" + bucket + "/avatars/" + fileName;
-                    })
+            final var urls = objectKeys.stream()
+                    .map(key -> minioService.getPublicUrl(publicBucket, key))
                     .collect(Collectors.toList());
 
             return ActionResult.success(urls);
+
         } catch (Exception e) {
+            logger.error("Failed to list avatars from bucket {}", publicBucket, e);
             return ActionResult.failure(ProblemDetail.forStatusAndDetail(
-                    HttpStatus.INTERNAL_SERVER_ERROR, "Failed to list avatars"));
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Failed to list avatars"
+            ));
         }
     }
 }

@@ -162,6 +162,7 @@ export interface SubmissionDto {
     originalFilename?: string;
     comment?: string;
     createdAt: string;
+    mediaUrl: string | null;
 }
 
 export type ReviewAction = 'APPROVED' | 'REJECTED';
@@ -232,6 +233,11 @@ export interface ContestLeaderboardEntryDto {
     displayName: string;
     totalScore: number;
     rank: number;
+}
+
+export interface TemplateDto {
+    name: string;
+    url: string;
 }
 
 

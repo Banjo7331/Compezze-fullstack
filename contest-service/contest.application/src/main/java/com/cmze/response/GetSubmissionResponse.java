@@ -20,4 +20,5 @@ public class GetSubmissionResponse {
     private String originalFilename;
     private String comment;
     private LocalDateTime createdAt;
+    private String mediaUrl;
 }

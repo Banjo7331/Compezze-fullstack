@@ -65,18 +65,19 @@ const ContestReviewPage: React.FC = () => {
         }
     };
 
-    const handleOpenPreview = async (sub: SubmissionDto) => {
-        try {
-            const url = await contestService.getSubmissionMediaUrl(contestId!, sub.id);
-            const isVideo = url.includes('.mp4') || url.includes('.mov') || url.includes('.webm');
-            
-            setPreviewUrl(url);
-            setPreviewType(isVideo ? 'video' : 'image');
-            setPreviewTitle(sub.participantName);
-            setPreviewOpen(true);
-        } catch (e) {
-            showError("Nie udało się załadować pliku.");
+    const handleOpenPreview = (sub: SubmissionDto) => {
+        if (!sub.mediaUrl) {
+            showError("Brak pliku dla tego zgłoszenia.");
+            return;
         }
+
+        const url = sub.mediaUrl;
+        const isVideo = url.includes('.mp4') || url.includes('.mov') || url.includes('.webm');
+        
+        setPreviewUrl(url);
+        setPreviewType(isVideo ? 'video' : 'image');
+        setPreviewTitle(sub.participantName);
+        setPreviewOpen(true);
     };
 
     const handleClosePreview = () => {
@@ -104,7 +105,7 @@ const ContestReviewPage: React.FC = () => {
             ) : (
                 <Grid container spacing={3}>
                     {submissions.map((sub) => (
-                        <Grid size={{ xs: 12, md: 6, lg: 4 }} key={sub.id}>
+                        <Grid item xs={12} md={6} lg={4} key={sub.id}>
                             <Card elevation={4} sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                                 
                                 <Box 
@@ -113,15 +114,16 @@ const ContestReviewPage: React.FC = () => {
                                         bgcolor: '#eee', 
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         position: 'relative', cursor: 'pointer',
-                                        '&:hover .play-btn': { transform: 'scale(1.1)' }
+                                        '&:hover .play-btn': { transform: 'scale(1.1)' },
+                                        // Opcjonalnie: pokaż miniaturkę od razu, jeśli to obrazek
+                                        backgroundImage: (sub.mediaUrl && !sub.mediaUrl.includes('.mp4')) ? `url(${sub.mediaUrl})` : 'none',
+                                        backgroundSize: 'cover',
+                                        backgroundPosition: 'center'
                                     }}
                                     onClick={() => handleOpenPreview(sub)}
                                 >
-                                    <Box className="play-btn" sx={{ transition: '0.2s', textAlign: 'center' }}>
-                                        <PlayCircleOutlinedIcon sx={{ fontSize: 60, color: 'primary.main', opacity: 0.8 }} />
-                                        <Typography variant="caption" display="block" color="text.secondary">
-                                            KLIKNIJ ABY ZOBACZYĆ
-                                        </Typography>
+                                    <Box className="play-btn" sx={{ transition: '0.2s', textAlign: 'center', bgcolor: 'rgba(255,255,255,0.7)', borderRadius: '50%', p: 1 }}>
+                                        <PlayCircleOutlinedIcon sx={{ fontSize: 50, color: 'primary.main' }} />
                                     </Box>
                                 </Box>
 

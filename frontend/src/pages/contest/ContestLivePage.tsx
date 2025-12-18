@@ -1,9 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, CircularProgress, Alert, Box, Stack, Paper, Typography, Grid } from '@mui/material'; // ✅ Dodano Grid
+import { Container, CircularProgress, Alert, Box, Stack, Paper, Typography, Grid } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import NextPlanIcon from '@mui/icons-material/NextPlan';
-import FlagIcon from '@mui/icons-material/Flag';
 
 import { Button } from '@/shared/ui/Button';
 import { contestService } from '@/features/contest/api/contestService';
@@ -19,6 +17,16 @@ import { ContestFinishedView } from '@/features/contest/components/ContestFinish
 
 import { useAuth } from '@/features/auth/AuthContext';
 
+// Funkcja hashująca ID na index (zawsze ten sam wynik dla tego samego ID)
+const getStableIndexFromId = (id: string, max: number) => {
+    if (!max || max === 0) return 0;
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+        hash = id.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return Math.abs(hash) % max;
+};
+
 const ContestLivePage: React.FC = () => {
     const { currentUserId } = useAuth();
     const { contestId } = useParams<{ contestId: string }>();
@@ -32,6 +40,23 @@ const ContestLivePage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const isFinished = contestInfo?.status === 'FINISHED';
+
+    // --- LOGIKA AVATARÓW ---
+    const [availableAvatars, setAvailableAvatars] = useState<string[]>([]);
+    const [userAvatarMap, setUserAvatarMap] = useState<Record<string, string>>({});
+
+    // 1. Pobierz listę dostępnych avatarów RAZ
+    useEffect(() => {
+        const loadAvatars = async () => {
+            try {
+                const urls = await contestService.getAvatars();
+                setAvailableAvatars(urls);
+            } catch (e) {
+                console.error("Błąd pobierania avatarów", e);
+            }
+        };
+        loadAvatars();
+    }, []);
 
     const fetchState = useCallback(async () => {
         try {
@@ -75,6 +100,37 @@ const ContestLivePage: React.FC = () => {
         }
     });
 
+    // 2. Przypisz avatary do userów (gdy zmienia się leaderboard)
+    useEffect(() => {
+        const currentLeaderboard = roomState?.leaderboard;
+        if (!currentLeaderboard || availableAvatars.length === 0) return;
+
+        setUserAvatarMap(prevMap => {
+            const newMap = { ...prevMap };
+            let hasChanges = false;
+
+            currentLeaderboard.forEach(entry => {
+                if (!newMap[entry.userId]) {
+                    const idx = getStableIndexFromId(entry.userId, availableAvatars.length);
+                    newMap[entry.userId] = availableAvatars[idx];
+                    hasChanges = true;
+                }
+            });
+
+            return hasChanges ? newMap : prevMap;
+        });
+    }, [roomState?.leaderboard, availableAvatars]);
+
+    // 3. Wstrzyknij url avatara do danych rankingu
+    const leaderboardWithAvatars = useMemo(() => {
+        if (!roomState?.leaderboard) return [];
+        return roomState.leaderboard.map(entry => ({
+            ...entry,
+            avatarUrl: userAvatarMap[entry.userId]
+        }));
+    }, [roomState?.leaderboard, userAvatarMap]);
+
+
     // --- HANDLERY ---
     const handleStartContest = async () => {
         if (!roomState?.roomId) return;
@@ -117,7 +173,6 @@ const ContestLivePage: React.FC = () => {
                 <Box textAlign="center">
                     <CircularProgress size={60} thickness={4} sx={{ mb: 2 }} />
                     <Typography variant="h5" fontWeight="bold">Aktualizacja etapu...</Typography>
-                    <Typography color="text.secondary">Pobieranie nowych danych</Typography>
                 </Box>
             </Container>
         );
@@ -146,18 +201,16 @@ const ContestLivePage: React.FC = () => {
                 </Button>
             </Box>
 
-            {/* ✅ UKŁAD 3-KOLUMNOWY */}
+            {/* ✅ UKŁAD 3-KOLUMNOWY (Naprawiona składnia Grid size={{...}}) */}
             <Grid container spacing={2} alignItems="stretch">
                 
                 {/* --- KOLUMNA LEWA: RANKING (3/12) --- */}
                 <Grid size={{ xs: 12, md: 3 }}>
                     <Box sx={{ height: '100%', maxHeight: 'calc(100vh - 200px)', overflowY: 'hidden' }}>
-                        {roomState?.leaderboard && (
-                            <ContestLeaderboard 
-                                leaderboard={roomState.leaderboard} 
-                                currentUserId={currentUserId} 
-                            />
-                        )}
+                        <ContestLeaderboard 
+                            leaderboard={leaderboardWithAvatars} 
+                            currentUserId={currentUserId} 
+                        />
                     </Box>
                 </Grid>
 
@@ -169,7 +222,7 @@ const ContestLivePage: React.FC = () => {
                         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                             <Box textAlign="center" mb={2}>
                                  <Typography variant="overline" fontSize="1rem" letterSpacing={3} color="text.secondary">
-                                     ETAP {roomState.currentStagePosition}
+                                      ETAP {roomState.currentStagePosition}
                                  </Typography>
                             </Box>
 

@@ -27,10 +27,6 @@ export const ContestJuryStage: React.FC<Props> = ({ contestId, roomId, settings,
     const [score, setScore] = useState<number>(settings.maxScore / 2);
     const [hasVoted, setHasVoted] = useState(false);
 
-    // ✅ NOWY STAN: Link do mediów i loader
-    const [mediaUrl, setMediaUrl] = useState<string | null>(null);
-    const [mediaLoading, setMediaLoading] = useState(false);
-
     // 1. Pobieramy zgłoszenia (APPROVED only)
     useEffect(() => {
         const fetch = async () => {
@@ -47,34 +43,8 @@ export const ContestJuryStage: React.FC<Props> = ({ contestId, roomId, settings,
 
     const currentSubmission = submissions[currentSubIndex];
 
-    // ✅ 2. Pobieranie URL do pliku (MinIO) przy każdej zmianie pracy
-    useEffect(() => {
-        if (!currentSubmission?.id) return;
+    // --- ZMIANA: USUNIĘTY useEffect fetchMedia ---
 
-        let isMounted = true;
-        setMediaLoading(true);
-        setMediaUrl(null); // Reset URL przy zmianie slajdu
-
-        const fetchMedia = async () => {
-            try {
-                // Pobieramy tymczasowy link do pliku
-                const url = await contestService.getSubmissionMediaUrl(contestId, currentSubmission.id);
-                if (isMounted) {
-                    setMediaUrl(url);
-                }
-            } catch (e) {
-                console.error("Błąd ładowania multimediów:", e);
-            } finally {
-                if (isMounted) setMediaLoading(false);
-            }
-        };
-
-        fetchMedia();
-
-        return () => { isMounted = false; };
-    }, [contestId, currentSubmission?.id]);
-
-    // 3. Handler Głosu
     const handleVote = async () => {
         if (!currentSubmission) return;
         try {
@@ -86,7 +56,6 @@ export const ContestJuryStage: React.FC<Props> = ({ contestId, roomId, settings,
         }
     };
 
-    // 4. Handler Hosta (Następna praca)
     const handleNextSubmission = () => {
         if (currentSubIndex < submissions.length - 1) {
             setCurrentSubIndex(prev => prev + 1);
@@ -108,9 +77,12 @@ export const ContestJuryStage: React.FC<Props> = ({ contestId, roomId, settings,
 
     if (!currentSubmission) return <CircularProgress sx={{ display: 'block', mx: 'auto', mt: 10 }} />;
 
+    // Helper variable
+    const mediaUrl = currentSubmission.mediaUrl;
+    const isVideo = mediaUrl?.includes('.mp4');
+
     return (
         <Box>
-            {/* NAGŁÓWEK ETAPU */}
             <Paper sx={{ p: 2, mb: 3, bgcolor: '#fff3e0', display: 'flex', alignItems: 'center', gap: 2 }}>
                 <GavelIcon color="warning" fontSize="large" />
                 <Box flexGrow={1}>
@@ -130,8 +102,6 @@ export const ContestJuryStage: React.FC<Props> = ({ contestId, roomId, settings,
             </Paper>
 
             <Grid container spacing={4}>
-                
-                {/* --- LEWA STRONA: PREZENTACJA PRACY (Z poprawionym obrazkiem) --- */}
                 <Grid size={{ xs: 12, md: 7 }}>
                     <Card elevation={4}>
                         <Box sx={{ 
@@ -142,22 +112,21 @@ export const ContestJuryStage: React.FC<Props> = ({ contestId, roomId, settings,
                             justifyContent: 'center',
                             overflow: 'hidden'
                         }}>
-                            {mediaLoading ? (
-                                <CircularProgress color="warning" />
-                            ) : mediaUrl ? (
+                            {/* --- ZMIANA: Używamy mediaUrl bezpośrednio --- */}
+                            {mediaUrl ? (
                                 <CardMedia
-                                    component={mediaUrl.endsWith('.mp4') ? 'video' : 'img'} // Proste wykrywanie wideo po rozszerzeniu
+                                    component={isVideo ? 'video' : 'img'}
                                     image={mediaUrl}
-                                    controls={mediaUrl.endsWith('.mp4')}
-                                    autoPlay={mediaUrl.endsWith('.mp4')}
+                                    controls={isVideo}
+                                    autoPlay={isVideo}
                                     sx={{ 
                                         height: '100%', 
                                         width: '100%', 
-                                        objectFit: 'contain' // Ważne: skaluje obrazek bez ucinania
+                                        objectFit: 'contain'
                                     }}
                                 />
                             ) : (
-                                <Typography color="error">Nie udało się załadować podglądu</Typography>
+                                <Typography color="error">Brak pliku / podglądu</Typography>
                             )}
                         </Box>
                         
@@ -170,7 +139,6 @@ export const ContestJuryStage: React.FC<Props> = ({ contestId, roomId, settings,
                     </Card>
                 </Grid>
 
-                {/* --- PRAWA STRONA: PANEL OCENY --- */}
                 <Grid size={{ xs: 12, md: 5 }}>
                     {isJury ? (
                         <Paper elevation={3} sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -213,7 +181,6 @@ export const ContestJuryStage: React.FC<Props> = ({ contestId, roomId, settings,
                             )}
                         </Paper>
                     ) : (
-                        // WIDOK DLA WIDZÓW
                         <Paper elevation={1} sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
                             <CircularProgress color="warning" />
                             <Typography variant="h6" sx={{ mt: 2 }}>Jury ocenia pracę...</Typography>

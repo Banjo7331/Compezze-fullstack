@@ -147,4 +147,13 @@ export const contestService = {
             score
         });
     },
+
+    getAvatars: async (): Promise<string[]> => {
+        const response = await apiClient.get<string[]>('/contest/resources/avatars');
+        return response.data; 
+    },
+    getTemplates: async (): Promise<TemplateDto[]> => {
+        const response = await apiClient.get<TemplateDto[]>('/contest/resources/templates');
+        return response.data;
+    }
 };

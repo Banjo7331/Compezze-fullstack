@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
     Box, Typography, Grid, Card, CardContent, CardActionArea, 
     Dialog, DialogContent, DialogActions, DialogTitle, Button, 
-    IconButton, CircularProgress, Alert, Chip 
+    IconButton, CircularProgress, Alert, Chip, CardMedia
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import HowToVoteIcon from '@mui/icons-material/HowToVote';
@@ -33,8 +33,6 @@ export const ContestPublicVoteStage: React.FC<Props> = ({ contestId, roomId, set
     const [loading, setLoading] = useState(true);
     
     const [selectedSub, setSelectedSub] = useState<SubmissionDto | null>(null);
-    const [modalMediaUrl, setModalMediaUrl] = useState<string | null>(null);
-    const [mediaLoading, setMediaLoading] = useState(false);
     
     const [votedSubId, setVotedSubId] = useState<string | null>(null);
     const [isVoting, setIsVoting] = useState(false);
@@ -54,30 +52,7 @@ export const ContestPublicVoteStage: React.FC<Props> = ({ contestId, roomId, set
         fetchList();
     }, [contestId]);
 
-    useEffect(() => {
-        if (!selectedSub) {
-            setModalMediaUrl(null);
-            return;
-        }
-
-        let mounted = true;
-        setMediaLoading(true);
-
-        const fetchSingleUrl = async () => {
-            try {
-                const url = await contestService.getSubmissionMediaUrl(contestId, selectedSub.id);
-                if (mounted) setModalMediaUrl(url);
-            } catch (e) {
-                console.error("Nie udało się pobrać pliku", e);
-            } finally {
-                if (mounted) setMediaLoading(false);
-            }
-        };
-
-        fetchSingleUrl();
-
-        return () => { mounted = false; };
-    }, [contestId, selectedSub]);
+    // --- ZMIANA: USUNIĘTY useEffect fetchSingleUrl ---
 
     const handleVote = async () => {
         if (!selectedSub) return;
@@ -122,9 +97,9 @@ export const ContestPublicVoteStage: React.FC<Props> = ({ contestId, roomId, set
                 {submissions.map((sub) => {
                     const isSelected = votedSubId === sub.id;
                     const isOther = votedSubId && !isSelected;
+                    const isVideo = sub.mediaUrl?.includes('.mp4');
 
                     return (
-                        // ✅ POPRAWKA TUTAJ: Używamy 'size' zamiast 'xs/sm/md' bezpośrednio i usuwamy 'item'
                         <Grid size={{ xs: 6, sm: 4, md: 3 }} key={sub.id}>
                             <Card 
                                 elevation={isSelected ? 8 : 2}
@@ -145,9 +120,19 @@ export const ContestPublicVoteStage: React.FC<Props> = ({ contestId, roomId, set
                                         width: '100%', height: 140, 
                                         bgcolor: '#f5f5f5', 
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: '#bdbdbd'
+                                        color: '#bdbdbd',
+                                        position: 'relative'
                                     }}>
-                                        <ZoomInIcon fontSize="large" />
+                                        {/* Wyświetl miniaturkę jeśli to obrazek */}
+                                        {!isVideo && sub.mediaUrl ? (
+                                             <CardMedia 
+                                                component="img" 
+                                                image={sub.mediaUrl} 
+                                                sx={{ height: '100%', width: '100%', objectFit: 'cover' }} 
+                                             />
+                                        ) : (
+                                            <ZoomInIcon fontSize="large" />
+                                        )}
                                     </Box>
                                     
                                     <CardContent sx={{ width: '100%' }}>
@@ -188,16 +173,15 @@ export const ContestPublicVoteStage: React.FC<Props> = ({ contestId, roomId, set
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 mb: 2, borderRadius: 1, overflow: 'hidden'
                             }}>
-                                {mediaLoading ? (
-                                    <CircularProgress color="inherit" />
-                                ) : modalMediaUrl ? (
-                                    modalMediaUrl.endsWith('.mp4') ? (
-                                        <video controls autoPlay style={{ maxHeight: '60vh', maxWidth: '100%' }} src={modalMediaUrl} />
+                                {/* --- ZMIANA: Używamy mediaUrl bezpośrednio --- */}
+                                {selectedSub.mediaUrl ? (
+                                    selectedSub.mediaUrl.includes('.mp4') ? (
+                                        <video controls autoPlay style={{ maxHeight: '60vh', maxWidth: '100%' }} src={selectedSub.mediaUrl} />
                                     ) : (
-                                        <img src={modalMediaUrl} alt="Praca" style={{ maxHeight: '60vh', maxWidth: '100%', objectFit: 'contain' }} />
+                                        <img src={selectedSub.mediaUrl} alt="Praca" style={{ maxHeight: '60vh', maxWidth: '100%', objectFit: 'contain' }} />
                                     )
                                 ) : (
-                                    <Typography color="error">Błąd ładowania podglądu</Typography>
+                                    <Typography color="error">Brak pliku</Typography>
                                 )}
                             </Box>
                             

@@ -8,15 +8,18 @@ import com.cmze.repository.ParticipantRepository;
 import com.cmze.repository.SubmissionRepository;
 import com.cmze.response.GetSubmissionResponse;
 import com.cmze.shared.ActionResult;
+import com.cmze.spi.minio.MinioService;
 import com.cmze.usecase.UseCase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.UUID;
 
 @UseCase
@@ -27,13 +30,19 @@ public class ListSubmissionsForReviewUseCase {
     private final SubmissionRepository submissionRepo;
     private final ParticipantRepository participantRepo;
     private final ContestRepository contestRepo;
+    private final MinioService minioService;
+
+    @Value("${app.media.presigned-get-ttl:10m}")
+    private Duration presignedGetTtl;
 
     public ListSubmissionsForReviewUseCase(final SubmissionRepository submissionRepo,
                                            final ParticipantRepository participantRepo,
-                                           final ContestRepository contestRepo) {
+                                           final ContestRepository contestRepo,
+                                           final MinioService minioService) {
         this.submissionRepo = submissionRepo;
         this.participantRepo = participantRepo;
         this.contestRepo = contestRepo;
+        this.minioService = minioService;   
     }
 
     @Transactional(readOnly = true)
@@ -79,15 +88,35 @@ public class ListSubmissionsForReviewUseCase {
                     ? submissionRepo.findByContest_IdAndStatus(contestId, effectiveStatus, pageable)
                     : submissionRepo.findByContest_Id(contestId, pageable);
 
-            final var dtoPage = pageResult.map(s -> new GetSubmissionResponse(
-                    s.getId(),
-                    s.getParticipant().getDisplayName(),
-                    s.getParticipant().getUserId(),
-                    s.getStatus(),
-                    s.getOriginalFilename(),
-                    s.getComment(),
-                    s.getCreatedAt()
-            ));
+            final var dtoPage = pageResult.map(s -> {
+                
+                String mediaUrl = null;
+                
+                final var fileRef = s.getFile(); 
+                
+                if (fileRef != null && fileRef.getObjectKey() != null) {
+                    try {
+                        mediaUrl = minioService.getPresignedUrlForDisplay(
+                                fileRef.getBucket(), 
+                                fileRef.getObjectKey(), 
+                                presignedGetTtl
+                        ).toString();
+                    } catch (Exception e) {
+                        logger.warn("Could not generate URL for submission {}", s.getId());
+                    }
+                }
+
+                return new GetSubmissionResponse(
+                        s.getId(),
+                        s.getParticipant().getDisplayName(),
+                        s.getParticipant().getUserId(),
+                        s.getStatus(),
+                        s.getOriginalFilename(),
+                        s.getComment(),
+                        s.getCreatedAt(),
+                        mediaUrl
+                );
+            });
 
             return ActionResult.success(dtoPage);
 

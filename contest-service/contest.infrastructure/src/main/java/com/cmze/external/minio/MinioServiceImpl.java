@@ -101,6 +101,18 @@ public class MinioServiceImpl implements MinioService {
         }
     }
 
+    public String getPublicUrl(String bucket, String objectKey) {
+        if (publicBaseUrl == null || bucket == null || objectKey == null) {
+            return null;
+        }
+        
+        String baseUrl = publicBaseUrl.endsWith("/") 
+                ? publicBaseUrl.substring(0, publicBaseUrl.length() - 1) 
+                : publicBaseUrl;
+
+        return String.format("%s/%s/%s", baseUrl, bucket, objectKey);
+    }
+
     @Override
     public URL getPresignedUrlForDisplay(String bucket, String objectKey, Duration expiry) {
         int seconds = toSecondsBounded(expiry != null ? expiry : presignedGetTtl);

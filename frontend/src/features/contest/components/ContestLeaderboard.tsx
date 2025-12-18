@@ -4,35 +4,31 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import type { ContestLeaderboardEntryDto } from '../model/types';
 
+type LeaderboardEntryWithAvatar = ContestLeaderboardEntryDto & {
+    avatarUrl?: string;
+};
+
 interface Props {
-    leaderboard: ContestLeaderboardEntryDto[];
+    leaderboard: LeaderboardEntryWithAvatar[];
     currentUserId?: string | null;
 }
 
 export const ContestLeaderboard: React.FC<Props> = ({ leaderboard, currentUserId }) => {
     
-    // Logika wyświetlania: Top 10 + Ty
     const { displayedRows, showSeparator } = useMemo(() => {
         const TOP_LIMIT = 10;
         
-        // 1. Bierzemy czołówkę
         const topPlayers = leaderboard.slice(0, TOP_LIMIT);
-        
-        // 2. Szukamy currentusera
         const myEntry = leaderboard.find(p => p.userId === currentUserId);
-        
-        // 3. Sprawdzamy czy jestem w czołówce
         const amIInTop = myEntry && myEntry.rank <= TOP_LIMIT;
 
-        // Jeśli jestem poza topką, musimy mnie dokleić
         if (myEntry && !amIInTop) {
             return {
-                displayedRows: [...topPlayers, myEntry], // Top 10 + Ja
-                showSeparator: true // Pokaż kropki przed ostatnim elementem
+                displayedRows: [...topPlayers, myEntry],
+                showSeparator: true 
             };
         }
 
-        // Jeśli jestem w topce lub mnie nie ma (jestem adminem/widzem)
         return {
             displayedRows: topPlayers,
             showSeparator: false
@@ -68,13 +64,10 @@ export const ContestLeaderboard: React.FC<Props> = ({ leaderboard, currentUserId
                     displayedRows.map((entry, index) => {
                         const isMe = entry.userId === currentUserId;
                         const rankColor = getRankColor(entry.rank);
-                        
-                        // Czy to jest ten "doklejony" wiersz (ostatni, gdy jest separator)?
                         const isLastAndSeparated = showSeparator && index === displayedRows.length - 1;
 
                         return (
                             <React.Fragment key={entry.userId}>
-                                {/* Separator (kropki) przed Twoim wynikiem */}
                                 {isLastAndSeparated && (
                                     <Box sx={{ textAlign: 'center', py: 1, color: 'text.disabled' }}>
                                         <MoreHorizIcon />
@@ -87,25 +80,41 @@ export const ContestLeaderboard: React.FC<Props> = ({ leaderboard, currentUserId
                                         borderRadius: 2,
                                         mb: 1,
                                         border: isMe ? '2px solid #1976d2' : '1px solid transparent',
-                                        // Wyróżnienie jeśli to Twój "odległy" wynik
                                         boxShadow: isMe ? 2 : 0 
                                     }}
                                 >
-                                    {/* Ranga (Kółeczko) */}
+                                    {/* ✅ RANGA (Tekst po lewej) */}
+                                    <Box 
+                                        sx={{ 
+                                            minWidth: 24, 
+                                            mr: 1, 
+                                            textAlign: 'center',
+                                            fontWeight: 'bold',
+                                            color: entry.rank <= 3 ? rankColor : 'text.secondary',
+                                            textShadow: entry.rank <= 3 ? '0px 1px 2px rgba(0,0,0,0.3)' : 'none',
+                                            fontSize: '1.1rem'
+                                        }}
+                                    >
+                                        #{entry.rank}
+                                    </Box>
+
+                                    {/* ✅ AVATAR (Obrazek wylosowany) */}
                                     <ListItemAvatar>
                                         <Avatar 
+                                            src={entry.avatarUrl}
                                             sx={{ 
                                                 bgcolor: rankColor, 
-                                                color: entry.rank <= 3 ? 'white' : 'black', 
-                                                fontWeight: 'bold',
-                                                width: 32, height: 32, fontSize: '0.9rem'
+                                                border: entry.rank <= 3 ? `2px solid ${rankColor}` : '1px solid #eee',
+                                                color: 'white', 
+                                                fontWeight: 'bold'
                                             }}
                                         >
-                                            {entry.rank}
+                                            {/* Fallback jeśli brak avatara (pierwsza litera) */}
+                                            {!entry.avatarUrl && entry.displayName.charAt(0).toUpperCase()}
                                         </Avatar>
                                     </ListItemAvatar>
 
-                                    {/* Nick */}
+                                    {/* NICK */}
                                     <ListItemText 
                                         primary={
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -113,7 +122,7 @@ export const ContestLeaderboard: React.FC<Props> = ({ leaderboard, currentUserId
                                                     variant="body1" 
                                                     fontWeight={isMe ? 'bold' : 'normal'} 
                                                     noWrap
-                                                    sx={{ maxWidth: 140 }}
+                                                    sx={{ maxWidth: 120 }}
                                                 >
                                                     {entry.displayName}
                                                 </Typography>
@@ -122,7 +131,7 @@ export const ContestLeaderboard: React.FC<Props> = ({ leaderboard, currentUserId
                                         }
                                     />
 
-                                    {/* Punkty */}
+                                    {/* PUNKTY */}
                                     <Typography variant="body1" fontWeight="bold" color="primary.main">
                                         {entry.totalScore}
                                     </Typography>

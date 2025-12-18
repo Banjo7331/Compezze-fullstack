@@ -18,6 +18,8 @@ public interface MinioService {
 
     GetObjectResponse downloadFile(String bucket, String objectKey);
 
+    String getPublicUrl(String bucket, String objectKey);
+
     URL getPresignedUrlForDisplay(String bucket, String objectKey, Duration expiry);
 
     List<String> listObjectKeys(String bucket, String prefix);
