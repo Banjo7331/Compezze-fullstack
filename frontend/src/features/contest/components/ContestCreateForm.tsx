@@ -28,6 +28,9 @@ import {
 import { quizService } from '@/features/quiz/api/quizService';
 import { surveyService } from '@/features/survey/api/surveyService';
 
+// ✅ IMPORT NOWEGO KOMPONENTU
+import { TemplateSelector } from './TemplateSelector'; 
+
 interface StageDraft {
     tempId: number;
     name: string;
@@ -61,6 +64,8 @@ export const ContestCreateForm: React.FC<ContestCreateFormProps> = ({ onCancel, 
     const [isPrivate, setIsPrivate] = useState(false);
     const [mediaPolicy, setMediaPolicy] = useState<SubmissionMediaPolicy>('BOTH');
     
+    const [coverImageKey, setCoverImageKey] = useState<string>('');
+
     const [resourceOptions, setResourceOptions] = useState<{id: number, title: string}[]>([]);
     const [isSearchingResource, setIsSearchingResource] = useState(false)
 
@@ -76,6 +81,7 @@ export const ContestCreateForm: React.FC<ContestCreateFormProps> = ({ onCancel, 
         juryRevealMode: 'IMMEDIATE', showJudgeNames: true, referenceId: 0
     });
 
+    // ... (moveStage, removeStage - bez zmian)
     const moveStage = (index: number, direction: -1 | 1) => {
         const newStages = [...stages];
         const temp = newStages[index];
@@ -87,6 +93,7 @@ export const ContestCreateForm: React.FC<ContestCreateFormProps> = ({ onCancel, 
     const removeStage = (index: number) => {
         setStages(stages.filter((_, i) => i !== index));
     };
+
 
     const fetchResources = useMemo(
         () =>
@@ -164,6 +171,8 @@ export const ContestCreateForm: React.FC<ContestCreateFormProps> = ({ onCancel, 
         e.preventDefault();
         if (stages.length === 0) { showError("Dodaj przynajmniej jeden etap."); return; }
         if (!name || !startDate || !endDate) { showError("Uzupełnij wymagane pola."); return; }
+        // ✅ Walidacja tła
+        if (!coverImageKey) { showError("Wybierz tło konkursu."); return; }
         
         const start = new Date(startDate);
         const end = new Date(endDate);
@@ -223,7 +232,8 @@ export const ContestCreateForm: React.FC<ContestCreateFormProps> = ({ onCancel, 
             isPrivate,
             hasPreliminaryStage: false,
             submissionMediaPolicy: mediaPolicy,
-            templateId: "default-template",
+            
+            coverImageKey: coverImageKey,
             stages: mappedStages
         };
 
@@ -259,10 +269,10 @@ export const ContestCreateForm: React.FC<ContestCreateFormProps> = ({ onCancel, 
                         <Box sx={{ p: 2, bgcolor: '#f9f9f9', borderRadius: 2 }}>
                             <Typography variant="h6" gutterBottom>Informacje Podstawowe</Typography>
                             <Grid container spacing={2}>
-                                <Grid size={{ xs: 12, md: 8 }}>
+                                <Grid item xs={12} md={8}>
                                     <TextField label="Nazwa Konkursu" fullWidth required value={name} onChange={e => setName(e.target.value)} />
                                 </Grid>
-                                <Grid size={{ xs: 12, md: 4 }}>
+                                <Grid item xs={12} md={4}>
                                     <FormControl fullWidth>
                                         <InputLabel>Kategoria</InputLabel>
                                         <Select value={category} label="Kategoria" onChange={e => setCategory(e.target.value as any)}>
@@ -270,19 +280,28 @@ export const ContestCreateForm: React.FC<ContestCreateFormProps> = ({ onCancel, 
                                         </Select>
                                     </FormControl>
                                 </Grid>
-                                <Grid size={{ xs: 12 }}>
+                                <Grid item xs={12}>
                                     <TextField label="Opis" multiline rows={3} fullWidth required value={description} onChange={e => setDescription(e.target.value)} />
                                 </Grid>
-                                <Grid size={{ xs: 12, md: 6 }}>
+                                
+                                {/* ✅ NOWY KOMPONENT WYBORU TŁA */}
+                                <Grid item xs={12}>
+                                    <TemplateSelector 
+                                        selectedKey={coverImageKey}
+                                        onSelect={setCoverImageKey}
+                                    />
+                                </Grid>
+
+                                <Grid item xs={12} md={6}>
                                     <TextField label="Start Data" type="datetime-local" fullWidth required InputLabelProps={{ shrink: true }} value={startDate} onChange={e => setStartDate(e.target.value)} />
                                 </Grid>
-                                <Grid size={{ xs: 12, md: 6 }}>
+                                <Grid item xs={12} md={6}>
                                     <TextField label="Koniec Data" type="datetime-local" fullWidth required InputLabelProps={{ shrink: true }} value={endDate} onChange={e => setEndDate(e.target.value)} />
                                 </Grid>
-                                <Grid size={{ xs: 12, md: 6 }}>
+                                <Grid item xs={12} md={6}>
                                     <TextField label="Limit uczestników" type="number" fullWidth value={participantLimit} onChange={e => setParticipantLimit(e.target.value)} />
                                 </Grid>
-                                <Grid size={{ xs: 12, md: 4 }}>
+                                <Grid item xs={12} md={4}>
                                     <FormControl fullWidth>
                                         <InputLabel>Dozwolone Media</InputLabel>
                                         <Select 
@@ -297,7 +316,7 @@ export const ContestCreateForm: React.FC<ContestCreateFormProps> = ({ onCancel, 
                                         </Select>
                                     </FormControl>
                                 </Grid>
-                                <Grid size={{ xs: 12, md: 6 }}>
+                                <Grid item xs={12} md={6}>
                                     <FormControlLabel control={<Switch checked={isPrivate} onChange={e => setIsPrivate(e.target.checked)} />} label="Konkurs Prywatny" />
                                 </Grid>
                             </Grid>
@@ -306,6 +325,7 @@ export const ContestCreateForm: React.FC<ContestCreateFormProps> = ({ onCancel, 
                         <Divider />
 
                         <Box>
+                            {/* ... (SEKCJA ETAPÓW - BEZ ZMIAN) ... */}
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                                 <Typography variant="h5">Etapy ({stages.length})</Typography>
                                 <Button variant="outlined" startIcon={<AddCircleOutlineIcon />} onClick={handleOpenAddStage}>
@@ -349,7 +369,9 @@ export const ContestCreateForm: React.FC<ContestCreateFormProps> = ({ onCancel, 
                     </Stack>
                 </form>
 
+                {/* ... (DIALOG DODAWANIA ETAPU - BEZ ZMIAN) ... */}
                 <Dialog open={isStageDialogOpen} onClose={() => setIsStageDialogOpen(false)} maxWidth="sm" fullWidth>
+                    {/* ... zawartość dialogu identyczna jak w oryginale ... */}
                     <DialogTitle>Dodaj Nowy Etap</DialogTitle>
                     <DialogContent dividers>
                         <Stack spacing={3} sx={{ mt: 1 }}>
@@ -377,17 +399,13 @@ export const ContestCreateForm: React.FC<ContestCreateFormProps> = ({ onCancel, 
                                     getOptionLabel={(option) => option.title}
                                     filterOptions={(x) => x}
                                     value={selectedResource}
-                                    
                                     onChange={(event: any, newValue: any | null) => {
                                         setSelectedResource(newValue);
                                         setNewStage({ ...newStage, referenceId: newValue ? newValue.id : 0 });
                                     }}
-                                    
                                     onInputChange={handleResourceSearch}
-                                    
                                     loading={isSearchingResource}
                                     noOptionsText="Wpisz nazwę, aby wyszukać..."
-                                    
                                     renderInput={(params) => (
                                         <TextField
                                             {...params}

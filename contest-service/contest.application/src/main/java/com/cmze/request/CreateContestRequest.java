@@ -42,8 +42,8 @@ public class CreateContestRequest {
 
     private boolean hasPreliminaryStage = false;
 
-    @NotBlank(message = "A templateId must be selected.")
-    private String templateId;
+    @NotBlank(message = "Cover image must be selected.")
+    private String coverImageKey;
 
     private SubmissionMediaPolicy submissionMediaPolicy;
 

@@ -36,4 +36,6 @@ public class GetContestDetailsResponse {
     private Set<ContestRole> myRoles;
 
     private List<GetStageDetailsResponse> stages;
+
+    private String coverUrl;
 }

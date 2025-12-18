@@ -3,6 +3,7 @@ package com.cmze.external.minio;
 import com.cmze.spi.minio.MinioService;
 import com.cmze.spi.minio.ObjectMetadata;
 import io.minio.*;
+import io.minio.StatObjectArgs;
 import io.minio.errors.ErrorResponseException;
 import io.minio.http.Method;
 import io.minio.messages.Item;
@@ -135,13 +136,40 @@ public class MinioServiceImpl implements MinioService {
     }
 
     @Override
+    public boolean objectExists(String bucket, String objectKey) {
+        try {
+            client.statObject(
+                StatObjectArgs.builder()
+                    .bucket(bucket)
+                    .object(objectKey)
+                    .build()
+            );
+            return true;
+            
+        } catch (ErrorResponseException e) {
+            String code = e.errorResponse().code();
+            
+            if ("NoSuchKey".equals(code) || "NoSuchBucket".equals(code)) {
+                return false; 
+            }
+            
+            logger.warn("MinIO error checking existence of {}/{}: {}", bucket, objectKey, code);
+            return false;
+            
+        } catch (Exception e) {
+            logger.error("Unexpected error checking existence of {}/{}", bucket, objectKey, e);
+            return false;
+        }
+    }
+
+    @Override
     public List<String> listObjectKeys(String bucket, String prefix) {
         try {
             Iterable<Result<Item>> results = client.listObjects(
                     ListObjectsArgs.builder()
                             .bucket(bucket)
-                            .prefix(prefix) // e.g., "templates/"
-                            .recursive(true) // Search subfolders as well
+                            .prefix(prefix)
+                            .recursive(true)
                             .build()
             );
 
@@ -224,7 +252,7 @@ public class MinioServiceImpl implements MinioService {
     private static int toSecondsBounded(Duration d) {
         long s = (d != null ? d.getSeconds() : 600);
         if (s < 1) s = 1;
-        long max = 7L * 24 * 3600; // 7 days
+        long max = 7L * 24 * 3600; 
         if (s > max) s = max;
         return (int) s;
     }

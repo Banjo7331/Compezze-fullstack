@@ -15,6 +15,7 @@ import com.cmze.spi.StageSettingsContext;
 import com.cmze.response.CreateContestResponse;
 import com.cmze.shared.ActionResult;
 import com.cmze.spi.identity.IdentityServiceClient;
+import com.cmze.spi.minio.MinioService;
 import com.cmze.usecase.UseCase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,26 +39,25 @@ public class CreateContestUseCase {
     private final ParticipantRepository participantRepository;
     private final StageSettingsContext stageContext;
     private final IdentityServiceClient identityClient;
+    private final MinioService minioService;
 
-    // private final MinioService minioService;
-    // private final ObjectKeyFactory objectKeyFactory;
 
-    @Value("${app.media.publicBaseUrl:}")
-    private String publicBaseUrl;
+    @Value("${app.media.public.bucket:contest-public}")
+    private String publicBucket;
+
+    private static final String DEFAULT_TEMPLATE_KEY = "templates/default.png";
 
     public CreateContestUseCase(final ContestRepository contestRepository,
                                 final ParticipantRepository participantRepository,
                                 final StageSettingsContext stageContext,
-                                final IdentityServiceClient identityClient
-                                // , final MinioService minioService,
-                                // final ObjectKeyFactory objectKeyFactory
+                                final IdentityServiceClient identityClient,
+                                final MinioService minioService
     ) {
         this.contestRepository = contestRepository;
         this.participantRepository = participantRepository;
         this.stageContext = stageContext;
         this.identityClient = identityClient;
-        // this.minioService = minioService;
-        // this.objectKeyFactory = objectKeyFactory;
+        this.minioService = minioService;
     }
 
     @Transactional
@@ -72,27 +72,9 @@ public class CreateContestUseCase {
         // MediaLocation location = null;
 
         try {
-            // --- LOGIKA MINIO (ZAKOMENTOWANA) ---
-            /*
-            String templateKey = request.getTemplateId();
-            if (templateKey != null && !templateKey.isBlank()) {
-                String templateBucket = objectKeyFactory.getPublicBucket();
-                location = objectKeyFactory.generateForContestCover(organizerId, templateKey);
-
-                ObjectMetadata templateMetadata = minioService.copyAndGetMetadata(
-                        templateBucket, templateKey,
-                        location.getBucket(), location.getObjectKey()
-                );
-
-                String publicUrl = buildPublicUrl(publicBaseUrl, location.getObjectKey());
-
-                // Ustawimy w encji poniżej:
-                // contest.setCoverImage(new Contest.CoverImageRef(...));
-            }
-            */
-            // ------------------------------------
 
             final var contest = new Contest();
+
             contest.setName(request.getName());
             contest.setDescription(request.getDescription());
             contest.setLocation(request.getLocation());
@@ -108,15 +90,10 @@ public class CreateContestUseCase {
             contest.setOpen(true);
             contest.setStatus(ContestStatus.CREATED);
             contest.setContentVerified(false);
-            contest.setCoverImage(null);
 
-            // 2. Tworzenie i Sortowanie Etapów
             final var stages = new ArrayList<Stage>();
 
             if (request.getStages() != null) {
-                // A. SORTOWANIE: Ufamy 'position' z DTO, żeby ustalić kolejność
-                // Jeśli frontend wysłał [5, 1], to sortujemy na [1, 5]
-                // null-safe: jeśli position brak, traktujemy jako 0
                 request.getStages().sort(Comparator.comparingInt(s ->
                         s.getOrder() != null ? s.getOrder() : 0
                 ));
@@ -145,6 +122,25 @@ public class CreateContestUseCase {
             }
             contest.setStages(stages);
 
+            var finalCoverKey = DEFAULT_TEMPLATE_KEY;
+
+            if (request.getCoverImageKey() != null && !request.getCoverImageKey().isBlank()) {
+                final var requestedKey = request.getCoverImageKey();
+                
+                final var exists = minioService.objectExists(publicBucket, requestedKey);
+
+                if (!exists) {
+                    logger.warn("User tried to use non-existent template: {}", requestedKey);
+                    return ActionResult.failure(ProblemDetail.forStatusAndDetail(
+                            HttpStatus.BAD_REQUEST, "Selected template does not exist."
+                    ));
+                }
+                
+                finalCoverKey = requestedKey;
+            }
+
+            contest.setCoverImageKey(finalCoverKey);
+
             final var savedContest = contestRepository.save(contest);
 
             String hostDisplayName = "Organizer";
@@ -172,17 +168,6 @@ public class CreateContestUseCase {
         } catch (Exception ex) {
             logger.error("Failed to create contest for organizer {}: {}", organizerId, ex.getMessage(), ex);
 
-            // --- KOMPENSACJA MINIO (ZAKOMENTOWANA) ---
-            /*
-            if (location != null) {
-                try {
-                    minioService.delete(location.getBucket(), location.getObjectKey());
-                } catch (Exception e) {
-                    logger.error("COMPENSATION FAILED: Could not delete MinIO object {}", location.getObjectKey(), e);
-                }
-            }
-            */
-
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
 
             return ActionResult.failure(ProblemDetail.forStatusAndDetail(
@@ -190,12 +175,4 @@ public class CreateContestUseCase {
         }
     }
 
-    /*
-    private static String buildPublicUrl(String baseUrl, String key) {
-        if (baseUrl == null || baseUrl.isBlank()) return null;
-        String cleanKey = key.startsWith("/") ? key.substring(1) : key;
-        String cleanBaseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-        return cleanBaseUrl + "/" + cleanKey;
-    }
-    */
 }

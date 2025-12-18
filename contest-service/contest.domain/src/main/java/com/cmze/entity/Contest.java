@@ -70,8 +70,8 @@ public class Contest {
     @Enumerated(EnumType.STRING)
     private ContestStatus status;
 
-    @Embedded
-    private CoverImageRef coverImage;
+    @Column(name = "cover_image_key")
+    private String coverImageKey;
 
     @OneToMany(mappedBy = "contest", cascade = CascadeType.ALL, fetch = FetchType.LAZY) // <--- POPRAWKA
     private List<Submission> submissions = new ArrayList<>();
@@ -83,20 +83,5 @@ public class Contest {
     @OneToMany(mappedBy = "contest", fetch = FetchType.LAZY)
     private List<Participant> participants = new ArrayList<>();
 
-    @Embeddable
-    @Getter @Setter @NoArgsConstructor @AllArgsConstructor
-    public static class CoverImageRef {
-        @Column(name = "cover_image_id")
-        private String externalId;
-
-        @Column(name = "cover_image_url")
-        private String url;
-
-        @Column(name = "cover_image_content_type")
-        private String contentType;
-
-        @Column(name = "cover_image_size")
-        private Long size;
-    }
 }
 

@@ -91,7 +91,7 @@ export interface CreateContestRequest {
     isPrivate: boolean;
     hasPreliminaryStage: boolean;
     
-    templateId: string;
+    coverImageKey: string;
     submissionMediaPolicy?: SubmissionMediaPolicy;
 
     stages: StageRequest[];
@@ -140,6 +140,7 @@ export interface ContestDetailsDto {
     participant: boolean;
     myRoles: ContestRole[];
 
+    coverUrl: string | null;
     stages: StageDto[];
 }
 
@@ -236,8 +237,9 @@ export interface ContestLeaderboardEntryDto {
 }
 
 export interface TemplateDto {
-    name: string;
+    key: string;
     url: string;
+    name: string;
 }
 
 

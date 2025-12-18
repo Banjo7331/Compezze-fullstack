@@ -10,7 +10,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TemplateResponse {
-    private String templateId;
-
-    private String publicUrl;
+    private String key;
+    private String url;
+    private String name;
 }

@@ -7,7 +7,9 @@ import com.cmze.repository.ParticipantRepository;
 import com.cmze.response.GetContestDetailsResponse;
 import com.cmze.response.GetStageDetailsResponse;
 import com.cmze.shared.ActionResult;
+import com.cmze.spi.minio.MinioService;
 import com.cmze.usecase.UseCase;
+import org.springframework.beans.factory.annotation.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -27,11 +29,17 @@ public class GetContestDetailsUseCase {
 
     private final ContestRepository contestRepository;
     private final ParticipantRepository participantRepository;
+    private final MinioService minioService;
+
+    @Value("${app.media.public.bucket:contest-public}")
+    private String publicBucket;
 
     public GetContestDetailsUseCase(final ContestRepository contestRepository,
-                                    final ParticipantRepository participantRepository) {
+                                    final ParticipantRepository participantRepository,
+                                    final MinioService minioService) {
         this.contestRepository = contestRepository;
         this.participantRepository = participantRepository;
+        this.minioService = minioService;
     }
 
     @Transactional(readOnly = true)
@@ -67,6 +75,11 @@ public class GetContestDetailsUseCase {
                     .collect(Collectors.toList());
 
 
+            String fullCoverUrl = null;
+            
+            if (contest.getCoverImageKey() != null) {
+                fullCoverUrl = minioService.getPublicUrl(publicBucket, contest.getCoverImageKey());
+            }
 
             final var response = new GetContestDetailsResponse(
                     contest.getId().toString(),
@@ -83,7 +96,8 @@ public class GetContestDetailsUseCase {
                     isOrganizer,
                     isParticipant,
                     myRoles,
-                    stagesDto
+                    stagesDto,
+                    fullCoverUrl
             );
 
             return ActionResult.success(response);

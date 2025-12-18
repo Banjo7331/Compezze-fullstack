@@ -35,10 +35,10 @@ public class ListTemplatesUseCase {
 
             final var responseList = objectKeys.stream()
                     .map(key -> {
-                        String displayName = key.replace(TEMPLATE_PREFIX, "");
                         String url = minioService.getPublicUrl(publicBucket, key);
-                        
-                        return new TemplateResponse(displayName, url);
+                        String displayName = key.replace(TEMPLATE_PREFIX, "");
+
+                        return new TemplateResponse(key, url, displayName);
                     })
                     .collect(Collectors.toList());
 

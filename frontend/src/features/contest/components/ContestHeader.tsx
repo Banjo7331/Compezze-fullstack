@@ -9,9 +9,28 @@ import type { ContestDetailsDto } from '../model/types';
 export const ContestHeader: React.FC<{ contest: ContestDetailsDto }> = ({ contest }) => {
     
     const activeStep = contest.status === 'FINISHED' ? contest.stages.length : -1;
+    const hasCover = !!contest.coverUrl;
 
     return (
-        <Paper elevation={3} sx={{ p: 4, mb: 4, borderRadius: 3, background: 'linear-gradient(to right, #ffffff, #f3e5f5)' }}>
+        <Paper 
+            elevation={3} 
+            sx={{ 
+                p: 4, 
+                mb: 4, 
+                borderRadius: 3,
+                position: 'relative',
+                overflow: 'hidden',
+                
+                color: hasCover ? '#fff' : 'text.primary',
+                textShadow: hasCover ? '0px 2px 10px rgba(0,0,0,0.9)' : 'none',
+
+                backgroundImage: hasCover 
+                    ? `url(${contest.coverUrl})` 
+                    : 'linear-gradient(to right, #ffffff, #f3e5f5)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+            }}
+        >
             <Grid container spacing={2}>
                 
                 <Grid size={{ xs: 12 }}>
