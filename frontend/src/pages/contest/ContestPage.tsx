@@ -1,84 +1,94 @@
 import React from 'react';
-import { Typography, Container, Box, Paper, Grid } from '@mui/material';
-import type { ButtonProps } from '@mui/material'; 
-import AddIcon from '@mui/icons-material/Add';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import { Button } from '@/shared/ui/Button'; 
+import { Typography, Row, Col, Card, Button, theme } from 'antd';
 import { Link } from 'react-router-dom';
-import type { LinkProps } from 'react-router-dom'; 
+import { 
+  TrophyOutlined, 
+  PlusOutlined, 
+  GlobalOutlined, 
+  RocketOutlined 
+} from '@ant-design/icons';
 
 import { UpcomingContestWidget } from '@/features/contest/components/UpcomingContestWidget';
 import { ContestPublicList } from '@/features/contest/components/ContestPublicList';
 
+const { Title, Text, Paragraph } = Typography;
+
 const ContestPage: React.FC = () => {
-    const LinkButton = Button as React.ComponentType<ButtonProps & Pick<LinkProps, 'to'>>;
+  const { token } = theme.useToken();
 
-    return (
-        <Container maxWidth="lg">
-            <Box sx={{ my: 4 }}>
-                <UpcomingContestWidget />
-                
-                <Box sx={{ textAlign: 'center', mb: 6 }}>
-                    <Typography variant="h3" component="h1" gutterBottom fontWeight="bold" color="secondary">
-                        <EmojiEventsIcon sx={{ fontSize: 50, verticalAlign: 'middle', mr: 2 }} />
-                        Centrum Konkursów
-                    </Typography>
-                    <Typography variant="h6" color="text.secondary">
-                        Dołącz do rywalizacji i wygrywaj!
-                    </Typography>
-                </Box>
+  return (
+    <div style={{ maxWidth: 1200, margin: '0 auto', paddingBottom: 40 }}>
+      
+      <div style={{ marginBottom: 40 }}>
+        <UpcomingContestWidget />
+      </div>
 
-                <Grid container spacing={4} justifyContent="center">
-                    
-                    <Grid size={{ xs: 12, md: 4 }}>
-                        <Paper 
-                            elevation={6} 
-                            sx={{ 
-                                p: 4, 
-                                height: '100%', 
-                                display: 'flex', 
-                                flexDirection: 'column', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                backgroundColor: '#f3e5f5',
-                                borderRadius: 3,
-                                minHeight: 200 
-                            }}
-                        >
-                            <AddIcon sx={{ fontSize: 60, color: 'secondary.main', mb: 2 }} />
-                            <Typography variant="h5" align="center" gutterBottom>
-                                Organizator
-                            </Typography>
-                            <Typography variant="body2" align="center" sx={{ mb: 3, color: 'text.secondary' }}>
-                                Stwórz własny konkurs wieloetapowy.
-                            </Typography>
-                            <LinkButton 
-                                variant="outlined"
-                                color="secondary"
-                                startIcon={<AddIcon />}
-                                component={Link}
-                                to="/contest/create"
-                            >
-                                UTWÓRZ NOWY
-                            </LinkButton>
-                        </Paper>
-                    </Grid>
+      <div style={{ textAlign: 'center', marginBottom: 48 }}>
+        <Title level={1} style={{ margin: 0, color: token.colorTextHeading }}>
+          <TrophyOutlined style={{ color: token.colorWarning, marginRight: 12 }} />
+          Contest Hub
+        </Title>
+        <Text type="secondary" style={{ fontSize: 18 }}>
+          Join the competition, test your skills, and win!
+        </Text>
+      </div>
 
-                    <Grid size={{ xs: 12, md: 8 }}>
-                        <Box>
-                            <Typography variant="h5" gutterBottom sx={{ borderBottom: '1px solid #eee', pb: 1, mb: 2 }}>
-                                🌍 Otwarte Zapisy
-                            </Typography>
-                            
-                            <ContestPublicList />
-                            
-                        </Box>
-                    </Grid>
+      <Row gutter={[24, 24]}>
+        <Col xs={24} md={8}>
+          <Card
+            hoverable
+            style={{ 
+              height: '100%', 
+              textAlign: 'center', 
+              borderColor: token.colorPrimaryBorder,
+              backgroundColor: token.colorBgContainer 
+            }}
+          >
+            <div style={{ padding: '24px 0' }}>
+              <RocketOutlined style={{ fontSize: 48, color: token.colorPrimary, marginBottom: 16 }} />
+              <Title level={3}>Organizer</Title>
+              <Paragraph type="secondary" style={{ marginBottom: 24 }}>
+                Create your own multi-stage contest and invite participants.
+              </Paragraph>
+              
+              <Link to="/contest/create">
+                <Button 
+                  type="primary" 
+                  size="large" 
+                  icon={<PlusOutlined />} 
+                  style={{ width: '100%' }}
+                >
+                  Create New
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        </Col>
 
-                </Grid>
-            </Box>
-        </Container>
-    );
+        <Col xs={24} md={16}>
+          <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              borderBottom: `1px solid ${token.colorBorderSecondary}`,
+              paddingBottom: 16,
+              marginBottom: 24
+            }}>
+              <GlobalOutlined style={{ fontSize: 24, color: token.colorPrimary, marginRight: 12 }} />
+              <div style={{ flex: 1 }}>
+                <Title level={4} style={{ margin: 0 }}>Open Registrations</Title>
+                <Text type="secondary">Browse active contests you can join right now</Text>
+              </div>
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <ContestPublicList />
+            </div>
+          </div>
+        </Col>
+      </Row>
+    </div>
+  );
 };
 
 export default ContestPage;

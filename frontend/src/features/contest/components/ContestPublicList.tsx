@@ -1,229 +1,218 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    Box, Typography, Paper, Button, CircularProgress, Stack, Pagination, 
-    Chip, Alert, Grid, TextField, MenuItem, InputAdornment, Container 
-} from '@mui/material';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import SearchOffIcon from '@mui/icons-material/SearchOff';
-import SearchIcon from '@mui/icons-material/Search';
-import FilterAltIcon from '@mui/icons-material/FilterAlt';
-
+  List, 
+  Card, 
+  Typography, 
+  Input, 
+  Select, 
+  Tag, 
+  Button, 
+  Row, 
+  Col, 
+  Space, 
+  Alert, 
+  Empty, 
+  theme 
+} from 'antd';
+import { 
+  SearchOutlined, 
+  FilterOutlined, 
+  TrophyOutlined, 
+  CalendarOutlined, 
+  ArrowRightOutlined 
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { contestService } from '@/features/contest/api/contestService'; // Używamy serwisu bezpośrednio
+
+import { contestService } from '@/features/contest/api/contestService';
 import { useDebounce } from '@/shared/hooks/useDebounce';
-import { ContestCategory } from '@/features/contest/model/types'; // Twój enum
+import { ContestCategory } from '@/features/contest/model/types';
+
+const { Text, Title } = Typography;
+const { Option } = Select;
 
 export const ContestPublicList: React.FC = () => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const { token } = theme.useToken();
 
-    // --- STANY ---
-    const [contests, setContests] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+  const [contests, setContests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    // Paginacja
-    const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(0);
+  const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const pageSize = 10;
 
-    // Filtry
-    const [search, setSearch] = useState('');
-    const [category, setCategory] = useState<ContestCategory | ''>('');
-    const [statusFilter, setStatusFilter] = useState<'CREATED' | 'LIVE' | ''>('');
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState<ContestCategory | ''>('');
+  const [statusFilter, setStatusFilter] = useState<'CREATED' | 'LIVE' | ''>('');
 
-    // Debounce dla wyszukiwarki (czekamy 500ms)
-    const debouncedSearch = useDebounce(search, 500);
+  const debouncedSearch = useDebounce(search, 500);
 
-    // --- POBIERANIE DANYCH ---
-    useEffect(() => {
-        const fetchContests = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const data = await contestService.getPublicContests({
-                    page: page - 1, // API liczy od 0, UI od 1
-                    size: 10,
-                    sort: 'startDate,asc',
-                    search: debouncedSearch,
-                    category: category,
-                    status: statusFilter
-                });
-                
-                setContests(data.content || []);
-                setTotalPages(data.totalPages);
-            } catch (err) {
-                console.error(err);
-                setError("Nie udało się pobrać listy konkursów.");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchContests();
-    }, [page, debouncedSearch, category, statusFilter]);
-
-    // Reset strony na 1, gdy user zmienia filtry
-    useEffect(() => {
-        setPage(1);
-    }, [debouncedSearch, category, statusFilter]);
-
-    // --- HANDLERS ---
-    const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
-        setPage(value);
+  useEffect(() => {
+    const fetchContests = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await contestService.getPublicContests({
+          page: page - 1,
+          size: pageSize,
+          sort: 'startDate,asc',
+          search: debouncedSearch,
+          category: category,
+          status: statusFilter
+        });
+        
+        setContests(data.content || []);
+        setTotalItems(data.totalElements);
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load contests.");
+      } finally {
+        setLoading(false);
+      }
     };
 
-    // --- RENDER ---
-    return (
-        <Container maxWidth="lg" sx={{ py: 2 }}>
-            
-            {/* 1. SEKCJA FILTRÓW (Nowość) */}
-            <Paper elevation={1} sx={{ p: 2, mb: 4, borderRadius: 2, bgcolor: '#fff' }}>
-                <Grid container spacing={2} alignItems="center">
-                    {/* Szukaj */}
-                    <Grid size={{ xs: 12, md: 5 }}>
-                        <TextField
-                            fullWidth
-                            size="small"
-                            placeholder="Szukaj po nazwie..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <SearchIcon color="action" />
-                                    </InputAdornment>
-                                ),
-                            }}
-                        />
-                    </Grid>
+    fetchContests();
+  }, [page, debouncedSearch, category, statusFilter]);
 
-                    {/* Kategoria */}
-                    <Grid size={{ xs: 6, md: 4 }}>
-                        <TextField
-                            select
-                            fullWidth
-                            size="small"
-                            label="Kategoria"
-                            value={category}
-                            onChange={(e) => setCategory(e.target.value as any)}
-                        >
-                            <MenuItem value="">Wszystkie</MenuItem>
-                            {Object.values(ContestCategory).map((cat) => (
-                                <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-                            ))}
-                        </TextField>
-                    </Grid>
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, category, statusFilter]);
 
-                    {/* Status */}
-                    <Grid size={{ xs: 6, md: 3 }}>
-                        <TextField
-                            select
-                            fullWidth
-                            size="small"
-                            label="Status"
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value as any)}
-                            InputProps={{
-                                startAdornment: <InputAdornment position="start"><FilterAltIcon fontSize="small" /></InputAdornment>
-                            }}
-                        >
-                            <MenuItem value="">Wszystkie</MenuItem>
-                            <MenuItem value="CREATED">Nadchodzące (Zapisy)</MenuItem>
-                            <MenuItem value="LIVE">Trwające (Live)</MenuItem>
-                        </TextField>
-                    </Grid>
-                </Grid>
-            </Paper>
+  return (
+    <div style={{ paddingBottom: 24 }}>
+      
+      <Card bordered={false} style={{ marginBottom: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+        <Row gutter={[16, 16]} align="middle">
+          <Col xs={24} md={10}>
+            <Input
+              placeholder="Search by name..."
+              prefix={<SearchOutlined style={{ color: 'rgba(0,0,0,0.25)' }} />}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              allowClear
+            />
+          </Col>
 
-            {/* 2. LOADING & ERROR */}
-            {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
-            ) : error ? (
-                <Alert severity="error">{error}</Alert>
-            ) : contests.length === 0 ? (
-                // 3. BRAK WYNIKÓW
-                <Box sx={{ textAlign: 'center', py: 6, bgcolor: '#fafafa', borderRadius: 2 }}>
-                    <SearchOffIcon sx={{ fontSize: 50, color: 'text.disabled', mb: 1 }} />
-                    <Typography variant="h6" color="text.secondary" gutterBottom>
-                        Nie znaleziono konkursów
-                    </Typography>
-                    <Typography variant="body2" color="text.disabled">
-                        Zmień kryteria wyszukiwania, aby zobaczyć więcej wyników.
-                    </Typography>
-                </Box>
-            ) : (
-                // 4. LISTA KONKURSÓW (Twój styl)
-                <Stack spacing={2}>
-                    {contests.map((contest) => (
-                        <Paper 
-                            key={contest.id} 
-                            elevation={2} 
-                            sx={{ 
-                                p: 3, 
-                                borderLeft: '6px solid #9c27b0', // Twój fioletowy akcent
-                                display: 'flex', 
-                                flexDirection: { xs: 'column', sm: 'row' },
-                                justifyContent: 'space-between', 
-                                alignItems: 'center',
-                                gap: 2,
-                                transition: 'transform 0.2s',
-                                '&:hover': { transform: 'translateY(-2px)', boxShadow: 3 }
-                            }}
-                        >
-                            <Box sx={{ width: '100%' }}>
-                                <Stack direction="row" alignItems="center" spacing={1} mb={0.5}>
-                                    <EmojiEventsIcon color="secondary" fontSize="small" />
-                                    <Typography variant="h6" fontWeight="bold">
-                                        {contest.name}
-                                    </Typography>
-                                    {/* Opcjonalny Chip statusu */}
-                                    {contest.status === 'LIVE' && (
-                                        <Chip label="LIVE" color="error" size="small" sx={{ ml: 1, fontWeight: 'bold', height: 20 }} />
-                                    )}
-                                </Stack>
-                                
-                                <Stack direction="row" spacing={2} sx={{ mt: 1 }} alignItems="center" flexWrap="wrap">
-                                    <Chip 
-                                        label={contest.category} 
-                                        size="small" 
-                                        variant="outlined" 
-                                        sx={{ fontSize: '0.7rem' }}
-                                    />
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
-                                        <CalendarTodayIcon fontSize="inherit" />
-                                        <Typography variant="caption">
-                                            Start: {new Date(contest.startDate).toLocaleDateString()} {new Date(contest.startDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                        </Typography>
-                                    </Box>
-                                </Stack>
-                            </Box>
-                            
-                            <Button 
-                                variant="contained" 
-                                color="secondary"
-                                endIcon={<ArrowForwardIcon />}
-                                onClick={() => navigate(`/contest/${contest.id}`)}
-                                sx={{ minWidth: '120px', alignSelf: { xs: 'stretch', sm: 'auto' } }}
-                            >
-                                Zobacz
-                            </Button>
-                        </Paper>
-                    ))}
-                </Stack>
-            )}
+          <Col xs={12} md={7}>
+            <Select
+              placeholder="Category"
+              style={{ width: '100%' }}
+              value={category || undefined}
+              onChange={(val) => setCategory(val || '')}
+              allowClear
+            >
+              <Option value="">All Categories</Option>
+              {Object.values(ContestCategory).map((cat) => (
+                <Option key={cat} value={cat}>{cat}</Option>
+              ))}
+            </Select>
+          </Col>
 
-            {/* 5. PAGINACJA */}
-            {totalPages > 1 && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                    <Pagination 
-                        count={totalPages} 
-                        page={page} 
-                        onChange={handlePageChange} 
-                        color="secondary" 
-                    />
-                </Box>
-            )}
-        </Container>
-    );
+          <Col xs={12} md={7}>
+            <Select
+              placeholder="Status"
+              style={{ width: '100%' }}
+              value={statusFilter || undefined}
+              onChange={(val) => setStatusFilter(val || '')}
+              suffixIcon={<FilterOutlined />}
+              allowClear
+            >
+              <Option value="">All Statuses</Option>
+              <Option value="CREATED">Upcoming (Registration)</Option>
+              <Option value="LIVE">Live (Running)</Option>
+            </Select>
+          </Col>
+        </Row>
+      </Card>
+
+      {error && (
+        <Alert 
+          message="Error" 
+          description={error} 
+          type="error" 
+          showIcon 
+          style={{ marginBottom: 24 }} 
+        />
+      )}
+
+      <List
+        loading={loading}
+        itemLayout="vertical"
+        size="large"
+        locale={{
+          emptyText: (
+            <Empty 
+              image={Empty.PRESENTED_IMAGE_SIMPLE} 
+              description="No contests found. Try changing filters." 
+            />
+          )
+        }}
+        pagination={{
+          onChange: (p) => setPage(p),
+          current: page,
+          pageSize: pageSize,
+          total: totalItems,
+          showSizeChanger: false,
+          align: 'center',
+        }}
+        dataSource={contests}
+        renderItem={(contest) => (
+          <List.Item key={contest.id} style={{ padding: 0, marginBottom: 16 }}>
+            <Card
+              hoverable
+              bodyStyle={{ padding: 24 }}
+              style={{
+                borderLeft: `6px solid ${token.colorPrimary}`,
+                borderRadius: token.borderRadiusLG,
+                overflow: 'hidden'
+              }}
+              onClick={() => navigate(`/contest/${contest.id}`)}
+            >
+              <Row justify="space-between" align="middle" gutter={[16, 16]}>
+                
+                <Col xs={24} sm={16} md={18}>
+                  <Space align="center" style={{ marginBottom: 8 }}>
+                    <TrophyOutlined style={{ color: token.colorPrimary, fontSize: 18 }} />
+                    <Title level={4} style={{ margin: 0 }}>
+                      {contest.name}
+                    </Title>
+                    {contest.status === 'LIVE' && (
+                      <Tag color="error" style={{ fontWeight: 'bold' }}>
+                        LIVE
+                      </Tag>
+                    )}
+                  </Space>
+
+                  <Space wrap size="middle" style={{ display: 'flex', marginTop: 8 }}>
+                    <Tag>{contest.category}</Tag>
+                    
+                    <Space size={4} style={{ color: token.colorTextSecondary }}>
+                      <CalendarOutlined />
+                      <Text type="secondary" style={{ fontSize: 13 }}>
+                        Start: {new Date(contest.startDate).toLocaleDateString()} {new Date(contest.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </Space>
+                  </Space>
+                </Col>
+
+                <Col xs={24} sm={8} md={6} style={{ textAlign: 'right' }}>
+                  <Button 
+                    type="primary" 
+                    ghost
+                    size="large"
+                    icon={<ArrowRightOutlined />}
+                    iconPosition="end"
+                    style={{ width: '100%', maxWidth: 140 }}
+                  >
+                    View
+                  </Button>
+                </Col>
+              </Row>
+            </Card>
+          </List.Item>
+        )}
+      />
+    </div>
+  );
 };

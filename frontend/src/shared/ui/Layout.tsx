@@ -1,7 +1,9 @@
 import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Box, Container, Typography } from '@mui/material';
+import { Layout as AntLayout } from 'antd';
 import NavBar from './Navbar'; 
+import { NotificationCenter } from '@/shared/ui/NotificationCenter';
+import { useAuth } from '@/features/auth/AuthContext';
 
 import { surveySocket } from '@/features/survey/api/surveySocket';
 import { useSurveyInviteListener } from '@/features/survey/hooks/useSurveyInviteListener';
@@ -12,36 +14,29 @@ import { useQuizInviteListener } from '@/features/quiz/hooks/useQuizInviteListen
 import { contestSocket } from '@/features/contest/api/contestSocket';
 import { useContestInviteListener } from '@/features/contest/hooks/useContestInviteListener';
 
-import { NotificationCenter } from '@/shared/ui/NotificationCenter';
-import { useAuth } from '@/features/auth/AuthContext';
+const { Content, Footer } = AntLayout;
 
 export const Layout = () => {
   const { currentUserId } = useAuth();
 
   useEffect(() => {
     if (currentUserId) {
-      
       if (!surveySocket.isActive()) {
-          console.log("[Layout] Activating Survey Socket...");
-          surveySocket.activate();
+        surveySocket.activate();
       }
 
       if (!quizSocket.isActive()) {
-          console.log("[Layout] Activating Quiz Socket...");
-          quizSocket.activate();
+        quizSocket.activate();
       }
 
       if (!contestSocket.isActive()) {
-          console.log("[Layout] Activating Contest Socket...");
-          quizSocket.activate();
+        contestSocket.activate();
       }
-
     } else {
       if (surveySocket.isActive()) surveySocket.deactivate();
       if (quizSocket.isActive()) quizSocket.deactivate();
       if (contestSocket.isActive()) contestSocket.deactivate();
     }
-    
   }, [currentUserId]);
 
   useSurveyInviteListener({ autoRedirect: false });
@@ -49,19 +44,18 @@ export const Layout = () => {
   useContestInviteListener({ autoRedirect: false });
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <AntLayout style={{ minHeight: '100vh' }}>
+      <NavBar />
       
-      <NavBar /> 
-      <Container component="main" sx={{ flexGrow: 1, py: 4 }}>
+      <Content style={{ padding: '24px 50px', maxWidth: 1200, margin: '0 auto', width: '100%' }}>
         <Outlet />
-      </Container>
-      <Box component="footer" sx={{ p: 2, bgcolor: '#f5f5f5', textAlign: 'center', mt: 'auto' }}>
-        <Typography variant="body2" color="text.secondary">
-            © 2025 Compezze App
-        </Typography>
-      </Box>
+      </Content>
+
+      <Footer style={{ textAlign: 'center', color: '#8c8c8c' }}>
+        © 2025 Compezze App
+      </Footer>
+
       <NotificationCenter />
-      
-    </Box>
+    </AntLayout>
   );
 };

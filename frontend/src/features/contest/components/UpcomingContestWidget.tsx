@@ -1,126 +1,138 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Paper, Typography, Chip, Skeleton, Stack } from '@mui/material';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import ListIcon from '@mui/icons-material/List';
-
+import { Card, Typography, Tag, Skeleton, Button, Space, theme, Row, Col } from 'antd';
+import { 
+  TrophyOutlined, 
+  CalendarOutlined, 
+  ArrowRightOutlined, 
+  UnorderedListOutlined 
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/shared/ui/Button';
+
 import { contestService } from '../api/contestService';
 import type { UpcomingContestDto } from '../model/types';
+import { MyEnteredContestsDialog } from './MyEnteredContestsDialog';
 
-import { MyEnteredContestsDialog } from './MyEnteredContestsDialog'; 
+const { Title, Text } = Typography;
 
 export const UpcomingContestWidget: React.FC = () => {
-    const navigate = useNavigate();
-    const [contest, setContest] = useState<UpcomingContestDto | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const navigate = useNavigate();
+  const { token } = theme.useToken();
+  
+  const [contest, setContest] = useState<UpcomingContestDto | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-    useEffect(() => {
-        const fetch = async () => {
-            try {
-                const data = await contestService.getUpcomingContest();
-                setContest(data);
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetch();
-    }, []);
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const data = await contestService.getUpcomingContest();
+        setContest(data);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetch();
+  }, []);
 
-    if (isLoading) {
-        return <Skeleton variant="rectangular" height={120} sx={{ borderRadius: 2 }} />;
-    }
-
-    if (!contest) return null;
-
-    const isLive = new Date(contest.startDate) <= new Date();
-
+  if (isLoading) {
     return (
-        <>
-            <Paper 
-                elevation={3} 
-                sx={{ 
-                    p: 3, 
-                    mb: 4, 
-                    background: 'linear-gradient(135deg, #6a1b9a 0%, #ab47bc 100%)',
-                    color: 'white',
-                    borderRadius: 3,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: 2
-                }}
-            >
-                <Box>
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                        <EmojiEventsIcon sx={{ color: '#ffd700' }} /> 
-                        <Typography variant="overline" sx={{ fontWeight: 'bold', letterSpacing: 1, color: 'rgba(255,255,255,0.9)' }}>
-                            TWÓJ NAJBLIŻSZY KONKURS
-                        </Typography>
-                        {contest.isOrganizer && <Chip label="ORGANIZATOR" size="small" color="warning" />}
-                    </Stack>
-                    
-                    <Typography variant="h4" fontWeight="bold" sx={{ mb: 1 }}>
-                        {contest.name}
-                    </Typography>
-                    
-                    <Stack direction="row" spacing={2} alignItems="center">
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <CalendarTodayIcon fontSize="small" sx={{ opacity: 0.8 }} />
-                            <Typography variant="body2">
-                                Start: {new Date(contest.startDate).toLocaleString()}
-                            </Typography>
-                        </Box>
-                        <Chip 
-                            label={contest.category} 
-                            size="small" 
-                            sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }} 
-                        />
-                    </Stack>
-                </Box>
-
-                <Stack direction="row" spacing={2}>
-                    <Button 
-                        variant="outlined" 
-                        onClick={() => setIsDialogOpen(true)}
-                        sx={{ 
-                            color: 'white', 
-                            borderColor: 'rgba(255,255,255,0.5)',
-                            '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' } 
-                        }}
-                        startIcon={<ListIcon />}
-                    >
-                        INNE
-                    </Button>
-
-                    <Button 
-                        variant="contained" 
-                        size="large"
-                        onClick={() => navigate(`/contest/${contest.id}`)}
-                        sx={{ 
-                            bgcolor: 'white', 
-                            color: '#6a1b9a', 
-                            fontWeight: 'bold',
-                            '&:hover': { bgcolor: '#f3e5f5' } 
-                        }}
-                        endIcon={<ArrowForwardIcon />}
-                    >
-                        {isLive ? "WEJDŹ TERAZ" : "SZCZEGÓŁY"}
-                    </Button>
-                </Stack>
-            </Paper>
-
-            <MyEnteredContestsDialog 
-                open={isDialogOpen} 
-                onClose={() => setIsDialogOpen(false)} 
-            />
-        </>
+      <Card style={{ marginBottom: 32, height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Skeleton active paragraph={{ rows: 3 }} />
+      </Card>
     );
+  }
+
+  if (!contest) return null;
+
+  const isLive = new Date(contest.startDate) <= new Date();
+
+  return (
+    <>
+      <Card
+        bordered={false}
+        style={{
+          marginBottom: 32,
+          background: `linear-gradient(135deg, ${token.colorPrimary} 0%, ${token.colorWarning} 100%)`,
+          color: '#fff',
+          boxShadow: '0 4px 12px rgba(250, 140, 22, 0.4)',
+        }}
+        bodyStyle={{ padding: 32 }}
+      >
+        <Row justify="space-between" align="middle" gutter={[24, 24]}>
+          <Col xs={24} md={16}>
+            <Space align="center" style={{ marginBottom: 8 }}>
+              <TrophyOutlined style={{ fontSize: 20, color: '#fff' }} />
+              <Text strong style={{ color: 'rgba(255,255,255,0.9)', letterSpacing: 1 }}>
+                YOUR UPCOMING CONTEST
+              </Text>
+              {contest.isOrganizer && (
+                <Tag color="#fff" style={{ color: token.colorPrimary, fontWeight: 'bold', border: 'none' }}>
+                  ORGANIZER
+                </Tag>
+              )}
+            </Space>
+
+            <Title level={2} style={{ color: '#fff', marginTop: 8, marginBottom: 16 }}>
+              {contest.name}
+            </Title>
+
+            <Space size="large" wrap>
+              <Space>
+                <CalendarOutlined style={{ color: 'rgba(255,255,255,0.8)' }} />
+                <Text style={{ color: '#fff' }}>
+                  Starts: {new Date(contest.startDate).toLocaleString()}
+                </Text>
+              </Space>
+              
+              <Tag style={{ 
+                background: 'rgba(255,255,255,0.2)', 
+                border: 'none', 
+                color: '#fff', 
+                fontSize: 14, 
+                padding: '4px 10px' 
+              }}>
+                {contest.category}
+              </Tag>
+            </Space>
+          </Col>
+
+          <Col xs={24} md={8} style={{ textAlign: 'right' }}>
+            <Space direction="vertical" align="end" style={{ width: '100%' }}>
+              <Button
+                size="large"
+                ghost
+                icon={<UnorderedListOutlined />}
+                onClick={() => setIsDialogOpen(true)}
+                style={{ color: '#fff', borderColor: '#fff', width: '100%', maxWidth: 200 }}
+              >
+                OTHERS
+              </Button>
+              
+              <Button
+                size="large"
+                style={{ 
+                  backgroundColor: '#fff', 
+                  color: token.colorPrimary, 
+                  border: 'none', 
+                  fontWeight: 'bold',
+                  width: '100%',
+                  maxWidth: 200
+                }}
+                onClick={() => navigate(`/contest/${contest.id}`)}
+              >
+                {isLive ? "ENTER NOW" : "DETAILS"} <ArrowRightOutlined />
+              </Button>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+
+      <MyEnteredContestsDialog
+        open={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+      />
+    </>
+  );
 };

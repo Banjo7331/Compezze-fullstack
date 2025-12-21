@@ -1,127 +1,120 @@
 import React, { useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import { Box, TextField, Typography, Alert, Link as MuiLink } from '@mui/material';
+import { Form, Input, Button, Alert, Typography, Card } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
-
-import { Button } from '@/shared/ui/Button'; 
-import { registerSchema } from '../model/validation';
-import type { RegisterRequest } from '../model/types';
 import { useRegister } from '../hooks/useRegister';
+import type { RegisterRequest } from '../model/types';
 
-type RegisterFormInput = RegisterRequest & { confirmPassword: string };
+const { Title, Text } = Typography;
 
 export const RegisterForm = () => {
     const { register, isLoading, isSuccess, error } = useRegister();
     const navigate = useNavigate();
+    const [form] = Form.useForm();
 
-    const { 
-        control, 
-        handleSubmit, 
-        formState: { errors } 
-    } = useForm<RegisterFormInput>({ 
-        resolver: yupResolver(registerSchema),
-        defaultValues: { 
-            username: '', 
-            email: '', 
-            password: '', 
-            confirmPassword: '' 
-        }, 
-    });
-
-    const onSubmit = (data: RegisterFormInput) => {
-        const { confirmPassword, ...req } = data;
-        register(req); 
+    const onFinish = (values: any) => {
+        const { confirmPassword, ...req } = values;
+        register(req as RegisterRequest);
     };
 
     useEffect(() => {
         if (isSuccess) {
-            alert('Konto utworzone pomyślnie! Możesz się teraz zalogować.');
             navigate('/login');
         }
     }, [isSuccess, navigate]);
 
+    useEffect(() => {
+        if (error && typeof error === 'object' && 'field' in error) {
+             form.setFields([{
+                 name: (error as any).field,
+                 errors: [(error as any).message]
+             }]);
+        }
+    }, [error, form]);
+
     return (
-        <Box 
-            component="form" 
-            onSubmit={handleSubmit(onSubmit)} 
-            sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: 320 }}
-        >
-            <Typography variant="h5" align="center" gutterBottom>
-                Utwórz Konto
-            </Typography>
+        <Card style={{ width: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                <Title level={3}>Create Account</Title>
+            </div>
 
-            {error && <Alert severity="error">{error}</Alert>}
+            {error && typeof error === 'string' && (
+                <Alert message={error} type="error" showIcon style={{ marginBottom: 24 }} />
+            )}
 
-            <Controller 
-                name="username" 
-                control={control} 
-                render={({ field }) => (
-                    <TextField 
-                        {...field} 
-                        label="Nazwa użytkownika" 
-                        variant="outlined"
-                        error={!!errors.username} 
-                        helperText={errors.username?.message} 
-                    />
-                )} 
-            />
+            <Form
+                form={form}
+                name="register"
+                onFinish={onFinish}
+                layout="vertical"
+                size="large"
+                scrollToFirstError
+                disabled={isLoading}
+            >
+                <Form.Item
+                    name="username"
+                    label="Username"
+                    rules={[
+                        { required: true, message: 'Please input your username!' },
+                        { min: 3, message: 'Username must be at least 3 characters.' }
+                    ]}
+                >
+                    <Input placeholder="Username" />
+                </Form.Item>
 
-            <Controller 
-                name="email" 
-                control={control} 
-                render={({ field }) => (
-                    <TextField 
-                        {...field} 
-                        label="Email" 
-                        type="email"
-                        variant="outlined"
-                        error={!!errors.email} 
-                        helperText={errors.email?.message} 
-                    />
-                )} 
-            />
+                <Form.Item
+                    name="email"
+                    label="E-mail"
+                    rules={[
+                        { type: 'email', message: 'The input is not valid E-mail!' },
+                        { required: true, message: 'Please input your E-mail!' },
+                    ]}
+                >
+                    <Input placeholder="Email" />
+                </Form.Item>
 
-            <Controller 
-                name="password" 
-                control={control} 
-                render={({ field }) => (
-                    <TextField 
-                        {...field} 
-                        label="Hasło" 
-                        type="password" 
-                        variant="outlined"
-                        error={!!errors.password} 
-                        helperText={errors.password?.message} 
-                    />
-                )} 
-            />
+                <Form.Item
+                    name="password"
+                    label="Password"
+                    rules={[
+                        { required: true, message: 'Please input your password!' },
+                        { min: 6, message: 'Password must be at least 6 characters.' }
+                    ]}
+                    hasFeedback
+                >
+                    <Input.Password placeholder="Password" />
+                </Form.Item>
 
-            <Controller 
-                name="confirmPassword" 
-                control={control} 
-                render={({ field }) => (
-                    <TextField 
-                        {...field} 
-                        label="Potwierdź hasło" 
-                        type="password" 
-                        variant="outlined"
-                        error={!!errors.confirmPassword} 
-                        helperText={errors.confirmPassword?.message} 
-                    />
-                )} 
-            />
+                <Form.Item
+                    name="confirmPassword"
+                    label="Confirm Password"
+                    dependencies={['password']}
+                    hasFeedback
+                    rules={[
+                        { required: true, message: 'Please confirm your password!' },
+                        ({ getFieldValue }) => ({
+                            validator(_, value) {
+                                if (!value || getFieldValue('password') === value) {
+                                    return Promise.resolve();
+                                }
+                                return Promise.reject(new Error('The two passwords that you entered do not match!'));
+                            },
+                        }),
+                    ]}
+                >
+                    <Input.Password placeholder="Confirm Password" />
+                </Form.Item>
 
-            <Button type="submit" disabled={isLoading} size="large">
-                {isLoading ? 'Rejestracja...' : 'Zarejestruj się'}
-            </Button>
-            
-            <Typography variant="body2" align="center" sx={{ mt: 1 }}>
-                Masz już konto?{' '}
-                <MuiLink component={Link} to="/login" underline="hover">
-                    Zaloguj się
-                </MuiLink>
-            </Typography>
-        </Box>
+                <Form.Item>
+                    <Button type="primary" htmlType="submit" block loading={isLoading}>
+                        {isLoading ? 'Registering...' : 'Register'}
+                    </Button>
+                </Form.Item>
+                
+                <div style={{ textAlign: 'center' }}>
+                    <Text>Already have an account? </Text>
+                    <Link to="/login">Log in</Link>
+                </div>
+            </Form>
+        </Card>
     );
 };

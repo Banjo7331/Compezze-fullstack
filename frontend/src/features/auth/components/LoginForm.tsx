@@ -1,78 +1,69 @@
-import React from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import { Box, TextField, Typography, Alert } from '@mui/material';
-import { Button } from '@/shared/ui/Button';
-import { loginSchema } from '../model/validation';
-import type { LoginRequest } from '../model/types'; 
+import React, { useEffect } from 'react';
+import { Form, Input, Button, Alert, Card, Typography } from 'antd';
+import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useLogin } from '../hooks/useLogin';
+import type { LoginRequest } from '../model/types';
+
+const { Title } = Typography;
 
 export const LoginForm = () => {
-    const { 
-        login, 
-        isLoading, 
-        error
-    } = useLogin(); 
-
-    const {
-        control,
-        handleSubmit,
-        formState: { errors },
-    } = useForm<LoginRequest>({ 
-        resolver: yupResolver(loginSchema),
-        defaultValues: { usernameOrEmail: '', password: '' }, 
-    });
-
-    const onSubmit = (data: LoginRequest) => {
-        login(data); 
+    const { login, isLoading, error } = useLogin();
+    const [form] = Form.useForm();
+    
+    const onFinish = (values: LoginRequest) => {
+        login(values);
     };
 
     return (
-        <Box
-            component="form"
-            onSubmit={handleSubmit(onSubmit)}
-            sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: 300 }}
-        >
-            <Typography variant="h5">Zaloguj się</Typography>
+        <Card style={{ width: 350, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                <Title level={3}>Sign In</Title>
+            </div>
+
             {error && (
-                <Alert severity="error">{error}</Alert> 
+                <Alert 
+                    message="Error"
+                    description={typeof error === 'string' ? error : 'Login failed'} 
+                    type="error" 
+                    showIcon 
+                    style={{ marginBottom: 24 }} 
+                />
             )}
 
-            <Controller
-                name="usernameOrEmail"
-                control={control}
-                render={({ field }) => (
-                    <TextField
-                        {...field}
-                        label="Nazwa użytkownika / Email"
-                        variant="outlined"
-                        error={!!errors.usernameOrEmail}
-                        helperText={errors.usernameOrEmail?.message}
-                    />
-                )}
-            />
-
-            <Controller
-                name="password"
-                control={control}
-                render={({ field }) => (
-                    <TextField
-                        {...field}
-                        label="Hasło"
-                        type="password"
-                        variant="outlined"
-                        error={!!errors.password}
-                        helperText={errors.password?.message}
-                    />
-                )}
-            />
-
-            <Button
-                type="submit"
-                disabled={isLoading} 
+            <Form
+                form={form}
+                name="login_form"
+                onFinish={onFinish}
+                layout="vertical"
+                size="large"
+                disabled={isLoading}
             >
-                {isLoading ? 'Logowanie...' : 'Zaloguj'}
-            </Button>
-        </Box>
+                <Form.Item
+                    name="usernameOrEmail"
+                    rules={[{ required: true, message: 'Please input your Username or Email!' }]}
+                >
+                    <Input 
+                        prefix={<UserOutlined />} 
+                        placeholder="Username or Email" 
+                    />
+                </Form.Item>
+
+                <Form.Item
+                    name="password"
+                    rules={[{ required: true, message: 'Please input your Password!' }]}
+                >
+                    <Input.Password 
+                        prefix={<LockOutlined />} 
+                        placeholder="Password" 
+                    />
+                </Form.Item>
+
+                <Form.Item>
+                    <Button type="primary" htmlType="submit" block loading={isLoading}>
+                        {isLoading ? 'Signing in...' : 'Sign In'}
+                    </Button>
+                </Form.Item>
+            </Form>
+        </Card>
     );
 };

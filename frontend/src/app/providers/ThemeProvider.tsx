@@ -1,20 +1,29 @@
-import { CssBaseline, ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material';
 import React from 'react';
-
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: '#1976d2',
-    },
-  },
-});
+import { ConfigProvider, App as AntdApp } from 'antd';
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   return (
-    <MuiThemeProvider theme={theme}>
-      <CssBaseline />
-      {children}
-    </MuiThemeProvider>
+    <ConfigProvider
+      theme={{
+        token: {
+          colorPrimary: '#fa8c16',
+          colorLink: '#fa8c16',
+          borderRadius: 6,
+          colorBgBase: '#ffffff',
+          fontFamily: "'Inter', sans-serif",
+        },
+        components: {
+          Layout: {
+            bodyBg: '#fff7e6', 
+            headerBg: '#ffffff',
+            footerBg: '#fff7e6',
+          },
+        },
+      }}
+    >
+      <AntdApp>
+        {children}
+      </AntdApp>
+    </ConfigProvider>
   );
 };

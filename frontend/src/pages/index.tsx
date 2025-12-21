@@ -1,7 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
-import { Layout } from '@/shared/ui/Layout'; 
-import { LinearProgress } from '@mui/material';
+import { Spin } from 'antd';
+import { Layout } from '@/shared/ui/Layout';
 
 const HomePage = lazy(() => import('./HomePage'));
 const LoginPage = lazy(() => import('./auth/LoginPage'));
@@ -11,7 +11,7 @@ const SurveyCreatePage = lazy(() => import('./survey/SurveyCreatePage'));
 const SurveyRoomPage = lazy(() => import('./survey/SurveyRoomPage'));
 
 const QuizPage = lazy(() => import('./quiz/QuizPage'));
-const QuizCreatePage = lazy(() => import('./quiz/QuizCreatePage')); 
+const QuizCreatePage = lazy(() => import('./quiz/QuizCreatePage'));
 const QuizRoomPage = lazy(() => import('./quiz/QuizRoomPage'));
 
 const ContestPage = lazy(() => import('./contest/ContestPage'));
@@ -25,49 +25,46 @@ const ProfilePage = lazy(() => import('./user/ProfilePage'));
 
 export const Routing = () => {
   return (
-    <Suspense fallback={<LinearProgress sx={{ position: 'fixed', top: 0, width: '100%' }} />}>
+    <Suspense
+      fallback={
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <Spin size="large" />
+        </div>
+      }
+    >
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<HomePage />} />
           <Route path="profile" element={<ProfilePage />} />
+          
           <Route path="survey">
             <Route index element={<SurveyPage />} />
-            
             <Route path="create" element={<SurveyCreatePage />} />
-            
             <Route path="room/:roomId" element={<SurveyRoomPage />} />
-            
             <Route path="join/:roomId" element={<SurveyRoomPage />} />
-
           </Route>
 
           <Route path="contest">
             <Route index element={<ContestPage />} />
-            
             <Route path="create" element={<ContestCreatePage />} />
-
             <Route path=":contestId" element={<ContestDetailsPage />} />
-            
             <Route path=":contestId/manage" element={<ContestManagePage />} />
-            
             <Route path=":contestId/review" element={<ContestReviewPage />} />
-
             <Route path=":contestId/live" element={<ContestLivePage />} />
           </Route>
+
           <Route path="quiz">
             <Route index element={<QuizPage />} />
-            
             <Route path="create" element={<QuizCreatePage />} />
-            
             <Route path="room/:roomId" element={<QuizRoomPage />} />
-            
             <Route path="join/:roomId" element={<QuizRoomPage />} />
           </Route>
         </Route>
+
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        <Route path="*" element={<div>404 - Strony nie znaleziono</div>} />
+        <Route path="*" element={<div>404 - Page not found</div>} />
       </Routes>
     </Suspense>
   );

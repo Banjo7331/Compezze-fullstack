@@ -1,9 +1,8 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { Snackbar, Alert } from '@mui/material';
-import type { AlertColor } from '@mui/material/Alert';
+import React, { createContext, useContext, useCallback } from 'react';
+import { App } from 'antd';
 
 interface SnackbarContextType {
-  showNotification: (message: string, severity?: AlertColor) => void;
+  showNotification: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
   showSuccess: (message: string) => void;
   showError: (message: string) => void;
 }
@@ -11,38 +10,22 @@ interface SnackbarContextType {
 const SnackbarContext = createContext<SnackbarContextType | undefined>(undefined);
 
 export const SnackbarProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [open, setOpen] = useState(false);
-  const [message, setMessage] = useState('');
-  const [severity, setSeverity] = useState<AlertColor>('info');
+  const { message } = App.useApp();
 
-  const handleClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
-    if (reason === 'clickaway') return;
-    setOpen(false);
-  };
+  const showNotification = useCallback((content: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    message.open({
+      type,
+      content,
+      duration: 3,
+    });
+  }, [message]);
 
-  const showNotification = useCallback((msg: string, sev: AlertColor = 'info') => {
-    setMessage(msg);
-    setSeverity(sev);
-    setOpen(true);
-  }, []);
-
-  const showSuccess = useCallback((msg: string) => showNotification(msg, 'success'), [showNotification]);
-  const showError = useCallback((msg: string) => showNotification(msg, 'error'), [showNotification]);
+  const showSuccess = useCallback((content: string) => showNotification(content, 'success'), [showNotification]);
+  const showError = useCallback((content: string) => showNotification(content, 'error'), [showNotification]);
 
   return (
     <SnackbarContext.Provider value={{ showNotification, showSuccess, showError }}>
       {children}
-      
-      <Snackbar 
-        open={open} 
-        autoHideDuration={6000}
-        onClose={handleClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert onClose={handleClose} severity={severity} variant="filled" sx={{ width: '100%' }}>
-          {message}
-        </Alert>
-      </Snackbar>
     </SnackbarContext.Provider>
   );
 };

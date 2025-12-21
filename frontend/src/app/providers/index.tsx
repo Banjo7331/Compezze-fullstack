@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
-import { ThemeProvider } from './ThemeProvider';
-import { SnackbarProvider } from './SnackbarProvider';
-import { NotificationProvider } from './NotificationProvider';
-import { RouterProvider } from './RouterProvider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Spin } from 'antd';
 
-import { AuthProvider } from '@/features/auth/AuthContext'; 
+import { ThemeProvider } from '@/app/providers/ThemeProvider';
+import { SnackbarProvider } from '@/app/providers/SnackbarProvider';
+import { NotificationProvider } from './NotificationProvider'; 
+import { RouterProvider } from './RouterProvider';
+import { AuthProvider } from '@/features/auth/AuthContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,24 +17,36 @@ const queryClient = new QueryClient({
   },
 });
 
-const ErrorFallback = () => <div>Wystąpił błąd aplikacji</div>;
+const ErrorFallback = () => (
+  <div style={{ padding: 20, textAlign: 'center', color: '#ff4d4f' }}>
+    Something went wrong
+  </div>
+);
+
+const LoadingFallback = () => (
+  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+    <Spin size="large" />
+  </div>
+);
 
 export const AppProviders = ({ children }: { children: React.ReactNode }) => {
   return (
-    <React.Suspense fallback={<div>Ładowanie...</div>}>
+    <Suspense fallback={<LoadingFallback />}>
       <ErrorBoundary FallbackComponent={ErrorFallback}>
         <QueryClientProvider client={queryClient}>
-          <SnackbarProvider>
-            <NotificationProvider>
-              <AuthProvider> 
-                <ThemeProvider>
-                  <RouterProvider>{children}</RouterProvider>
-                </ThemeProvider>
-              </AuthProvider>
-            </NotificationProvider>
-          </SnackbarProvider>
+          <ThemeProvider>
+            <SnackbarProvider>
+              <NotificationProvider>
+                <AuthProvider>
+                  <RouterProvider>
+                    {children}
+                  </RouterProvider>
+                </AuthProvider>
+              </NotificationProvider>
+            </SnackbarProvider>
+          </ThemeProvider>
         </QueryClientProvider>
       </ErrorBoundary>
-    </React.Suspense>
+    </Suspense>
   );
 };

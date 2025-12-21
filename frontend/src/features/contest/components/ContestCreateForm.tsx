@@ -1,462 +1,298 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState } from 'react';
 import { 
-    Typography, TextField, Box, Stack, Card, CardContent, 
-    IconButton, MenuItem, Select, FormControl, InputLabel, 
-    Grid, Paper, CircularProgress, Divider, Chip, Tooltip,
-    Dialog, DialogTitle, DialogContent, DialogActions, Switch, FormControlLabel, Autocomplete
-} from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import SaveIcon from '@mui/icons-material/Save';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
-import PollIcon from '@mui/icons-material/Poll';
-import GavelIcon from '@mui/icons-material/Gavel';
-import PublicIcon from '@mui/icons-material/Public';
-import CategoryIcon from '@mui/icons-material/Category';
-import { debounce } from '@mui/material/utils';
+  Form, Input, Button, Card, DatePicker, Select, Switch, 
+  Typography, Row, Col, Space, Divider, List, Tag, theme 
+} from 'antd';
+import { 
+  SaveOutlined, PlusOutlined, DeleteOutlined, 
+  ArrowUpOutlined, ArrowDownOutlined, 
+  TrophyOutlined, BarChartOutlined, TeamOutlined 
+} from '@ant-design/icons';
+import dayjs, { type Dayjs } from 'dayjs';
 
-import { Button } from '@/shared/ui/Button';
 import { useSnackbar } from '@/app/providers/SnackbarProvider';
 import { contestService } from '../api/contestService';
-import { 
-    ContestCategory, SubmissionMediaPolicy, StageType, JuryRevealMode,
-    type CreateContestRequest, type StageRequest 
-} from '../model/types';
+import { ContestCategory, type CreateContestRequest } from '../model/types';
 
-import { quizService } from '@/features/quiz/api/quizService';
-import { surveyService } from '@/features/survey/api/surveyService';
+import { TemplateSelector } from './TemplateSelector';
+import { StageConfigurationModal, type StageFormValues } from './StageConfigurationModal';
 
-// ✅ IMPORT NOWEGO KOMPONENTU
-import { TemplateSelector } from './TemplateSelector'; 
+const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
 
-interface StageDraft {
-    tempId: number;
-    name: string;
-    type: StageType;
-    durationMinutes: number;
-    
-    referenceId?: number;
-    weight?: number;
-    maxScore?: number;
-    maxParticipants?: number;
-    timePerQuestion?: number;
-    showJudgeNames?: boolean;
-    juryRevealMode?: JuryRevealMode;
+interface StageDraft extends StageFormValues {
+  tempId: number;
 }
 
-interface ContestCreateFormProps {
-    onCancel: () => void;
-    onSuccess: () => void;
+interface Props {
+  onCancel: () => void;
+  onSuccess: () => void;
 }
 
-export const ContestCreateForm: React.FC<ContestCreateFormProps> = ({ onCancel, onSuccess }) => {
-    const { showSuccess, showError } = useSnackbar();
+export const ContestCreateForm: React.FC<Props> = ({ onCancel, onSuccess }) => {
+  const { token } = theme.useToken();
+  const { showSuccess, showError } = useSnackbar();
+  const [form] = Form.useForm();
+  
+  const [stages, setStages] = useState<StageDraft[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState<string | null>(null);
 
-    const [name, setName] = useState('');
-    const [description, setDescription] = useState('');
-    const [location, setLocation] = useState('');
-    const [category, setCategory] = useState<ContestCategory>('Other');
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [participantLimit, setParticipantLimit] = useState<string>('100');
-    const [isPrivate, setIsPrivate] = useState(false);
-    const [mediaPolicy, setMediaPolicy] = useState<SubmissionMediaPolicy>('BOTH');
-    
-    const [coverImageKey, setCoverImageKey] = useState<string>('');
+  const disabledDate = (current: Dayjs) => {
+    return current && current < dayjs().startOf('day');
+  };
 
-    const [resourceOptions, setResourceOptions] = useState<{id: number, title: string}[]>([]);
-    const [isSearchingResource, setIsSearchingResource] = useState(false)
+  const addStage = (values: StageFormValues) => {
+    setStages([...stages, { ...values, tempId: Date.now() }]);
+    setIsModalOpen(false);
+  };
 
-    const [selectedResource, setSelectedResource] = useState<{id: number, title: string} | null>(null);
+  const removeStage = (index: number) => {
+    setStages(stages.filter((_, i) => i !== index));
+  };
 
-    const [stages, setStages] = useState<StageDraft[]>([]);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+  const moveStage = (index: number, direction: -1 | 1) => {
+    const newStages = [...stages];
+    const temp = newStages[index];
+    newStages[index] = newStages[index + direction];
+    newStages[index + direction] = temp;
+    setStages(newStages);
+  };
 
-    const [isStageDialogOpen, setIsStageDialogOpen] = useState(false);
-    const [newStage, setNewStage] = useState<StageDraft>({
-        tempId: 0, name: '', type: 'QUIZ', durationMinutes: 30, 
-        weight: 1.0, maxParticipants: 100, maxScore: 10, timePerQuestion: 30,
-        juryRevealMode: 'IMMEDIATE', showJudgeNames: true, referenceId: 0
-    });
+  const getStageIcon = (type: string) => {
+    switch (type) {
+      case 'QUIZ': return <TrophyOutlined style={{ color: token.colorWarning }} />;
+      case 'SURVEY': return <BarChartOutlined style={{ color: token.colorInfo }} />;
+      default: return <TeamOutlined style={{ color: token.colorTextSecondary }} />;
+    }
+  };
 
-    // ... (moveStage, removeStage - bez zmian)
-    const moveStage = (index: number, direction: -1 | 1) => {
-        const newStages = [...stages];
-        const temp = newStages[index];
-        newStages[index] = newStages[index + direction];
-        newStages[index + direction] = temp;
-        setStages(newStages);
-    };
+  const handleFinish = async (values: any) => {
+    if (stages.length === 0) {
+      showError("Musisz dodać przynajmniej jeden etap.");
+      return;
+    }
+    if (!selectedTemplateKey) {
+      showError("Wybierz motyw graficzny (tło) konkursu.");
+      return;
+    }
 
-    const removeStage = (index: number) => {
-        setStages(stages.filter((_, i) => i !== index));
-    };
+    setIsSubmitting(true);
 
-
-    const fetchResources = useMemo(
-        () =>
-            debounce(async (input: string, type: string, callback: (results: any[]) => void) => {
-                try {
-                    let results: any[] = [];
-                    if (type === 'QUIZ') {
-                        results = await quizService.searchForms(input);
-                    } else if (type === 'SURVEY') {
-                        results = await surveyService.searchForms(input);
-                    }
-                    callback(results);
-                } catch (e) {
-                    callback([]);
-                }
-            }, 400),
-        [],
-    );
-
-    const handleOpenAddStage = () => {
-        setNewStage({
-            tempId: Date.now(),
-            name: '',
-            type: 'QUIZ',
-            durationMinutes: 30,
-            weight: 1.0,
-            maxParticipants: 100,
-            maxScore: 10,
-            timePerQuestion: 30,
-            juryRevealMode: 'IMMEDIATE',
-            showJudgeNames: true,
-            referenceId: 0
-        });
-        setSelectedResource(null);
-        setResourceOptions([]);
-        setIsStageDialogOpen(true);
-    };
-
-    const handleResourceSearch = (event: any, newInputValue: string) => {
-        if (newInputValue === '') {
-            setResourceOptions([]);
-            return;
-        }
-        setIsSearchingResource(true);
+    try {
+      const payload: CreateContestRequest = {
+        name: values.name,
+        description: values.description,
+        location: values.location,
+        contestCategory: values.category,
         
-        fetchResources(newInputValue, newStage.type, (results) => {
-            const options = results.map(r => ({
-                id: r.id || r.surveyFormId,
-                title: r.title
-            }));
-            setResourceOptions(options);
-            setIsSearchingResource(false);
-        });
-    };
-
-    const handleTypeChange = (e: any) => {
-        const type = e.target.value as any;
-        setNewStage({ ...newStage, type: type, referenceId: 0 });
-        setSelectedResource(null);
-        setResourceOptions([]);
-    };
-
-    const handleAddStageConfirm = () => {
-        if (!newStage.name) { showError("Nazwa etapu wymagana"); return; }
-        if (!newStage.durationMinutes || newStage.durationMinutes < 1) { showError("Czas trwania musi być > 0"); return; }
+        startDate: values.dates[0].toISOString(),
+        endDate: values.dates[1].toISOString(),
         
-        if (newStage.type === 'QUIZ' && !newStage.referenceId) { showError("Podaj ID Szablonu Quizu"); return; }
-        if (newStage.type === 'SURVEY' && !newStage.referenceId) { showError("Podaj ID Szablonu Ankiety"); return; }
-
-        setStages([...stages, { ...newStage, tempId: Date.now() }]);
-        setIsStageDialogOpen(false);
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (stages.length === 0) { showError("Dodaj przynajmniej jeden etap."); return; }
-        if (!name || !startDate || !endDate) { showError("Uzupełnij wymagane pola."); return; }
-        // ✅ Walidacja tła
-        if (!coverImageKey) { showError("Wybierz tło konkursu."); return; }
+        participantLimit: values.participantLimit ? Number(values.participantLimit) : undefined,
+        isPrivate: values.isPrivate,
+        submissionMediaPolicy: values.mediaPolicy,
         
-        const start = new Date(startDate);
-        const end = new Date(endDate);
+        hasPreliminaryStage: false,
+        coverImageKey: selectedTemplateKey,
+        
+        stages: stages.map(s => {
+          const base = { name: s.name, durationMinutes: s.durationMinutes };
+          if (s.type === 'QUIZ') {
+            return { 
+              ...base, type: 'QUIZ', 
+              quizFormId: s.referenceId!, 
+              weight: s.weight, 
+              maxParticipants: s.maxParticipants, 
+              timePerQuestion: s.timePerQuestion 
+            };
+          }
+          if (s.type === 'SURVEY') {
+            return { ...base, type: 'SURVEY', surveyFormId: s.referenceId!, maxParticipants: s.maxParticipants };
+          }
+          return { 
+            ...base, type: s.type, 
+            weight: s.weight, 
+            maxScore: s.maxScore,
+            juryRevealMode: s.juryRevealMode || 'IMMEDIATE'
+          } as any;
+        })
+      };
 
-        if (start >= end) {
-            showError("Data zakończenia musi być późniejsza niż data rozpoczęcia.");
-            return;
-        }
+      await contestService.createContest(payload);
+      showSuccess("Konkurs utworzony pomyślnie!");
+      onSuccess();
+    } catch (e) {
+      showError("Nie udało się utworzyć konkursu.");
+      console.error(e);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-        setIsSubmitting(true);
+  return (
+    <Card 
+      bordered={false} 
+      style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.05)', borderRadius: 16 }}
+    >
+      <Title level={2} style={{ textAlign: 'center', marginBottom: 32 }}>
+        Contest Creator
+      </Title>
 
-        const mappedStages: StageRequest[] = stages.map((s) => {
-            const base = { name: s.name, durationMinutes: s.durationMinutes };
-            
-            switch (s.type) {
-                case 'QUIZ': 
-                    return { 
-                        ...base, type: 'QUIZ', 
-                        quizFormId: Number(s.referenceId), 
-                        weight: Number(s.weight), 
-                        maxParticipants: Number(s.maxParticipants), 
-                        timePerQuestion: Number(s.timePerQuestion) 
-                    };
-                case 'SURVEY': 
-                    return { 
-                        ...base, type: 'SURVEY', 
-                        surveyFormId: Number(s.referenceId), 
-                        maxParticipants: Number(s.maxParticipants) 
-                    };
-                case 'JURY_VOTE': 
-                    return { 
-                        ...base, type: 'JURY_VOTE', 
-                        weight: Number(s.weight), 
-                        maxScore: Number(s.maxScore), 
-                        juryRevealMode: s.juryRevealMode!, 
-                        showJudgeNames: !!s.showJudgeNames 
-                    };
-                case 'PUBLIC_VOTE': 
-                    return { 
-                        ...base, type: 'PUBLIC_VOTE', 
-                        weight: Number(s.weight), 
-                        maxScore: Number(s.maxScore) 
-                    };
-                default: 
-                    return { ...base, type: 'GENERIC' };
-            }
-        });
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleFinish}
+        initialValues={{
+          participantLimit: 100,
+          mediaPolicy: 'BOTH',
+          category: 'Other',
+          isPrivate: false
+        }}
+      >
+        <Row gutter={24}>
+          <Col xs={24} md={16}>
+            <Form.Item name="name" label="Contest Name" rules={[{ required: true, message: "Please enter a name" }]}>
+              <Input size="large" placeholder="Enter event name" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item name="category" label="Category">
+              <Select size="large">
+                {Object.keys(ContestCategory).map(c => <Select.Option key={c} value={c}>{c}</Select.Option>)}
+              </Select>
+            </Form.Item>
+          </Col>
+        </Row>
 
-        const payload: CreateContestRequest = {
-            name, 
-            description, 
-            location,
-            contestCategory: category,
-            startDate: new Date(startDate).toISOString(),
-            endDate: new Date(endDate).toISOString(),
-            participantLimit: participantLimit ? Number(participantLimit) : undefined,
-            isPrivate,
-            hasPreliminaryStage: false,
-            submissionMediaPolicy: mediaPolicy,
-            
-            coverImageKey: coverImageKey,
-            stages: mappedStages
-        };
+        <Form.Item name="description" label="Description" rules={[{ required: true, message: "Description is required" }]}>
+          <Input.TextArea rows={4} placeholder="What is this contest about?" />
+        </Form.Item>
 
-        try {
-            await contestService.createContest(payload);
-            showSuccess("Konkurs utworzony pomyślnie!");
-            onSuccess();
-        } catch (e) {
-            showError("Błąd tworzenia konkursu. Sprawdź dane.");
-            console.error(e);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+        <Row gutter={24}>
+          <Col xs={24} md={12}>
+            <Form.Item name="dates" label="Duration" rules={[{ required: true, message: "Please select dates" }]}>
+              <RangePicker 
+                disabledDate={disabledDate} 
+                showTime 
+                format="YYYY-MM-DD HH:mm" 
+                style={{ width: '100%' }} 
+                size="large" 
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={6}>
+            <Form.Item name="participantLimit" label="Participant Limit">
+              <Input type="number" size="large" min={1} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={6}>
+             <Form.Item name="location" label="Location (Optional)">
+               <Input size="large" placeholder="Online or City" />
+             </Form.Item>
+          </Col>
+        </Row>
 
-    const getStageIcon = (type: string) => {
-        switch (type) {
-            case 'QUIZ': return <SportsEsportsIcon color="warning" />;
-            case 'SURVEY': return <PollIcon color="info" />;
-            case 'JURY_VOTE': return <GavelIcon color="error" />;
-            case 'PUBLIC_VOTE': return <PublicIcon color="success" />;
-            default: return <CategoryIcon color="disabled" />;
-        }
-    };
-
-    return (
-        <Card component={Paper} elevation={3} sx={{ p: 3, maxWidth: 1000, mx: 'auto', mt: 4 }}>
-            <CardContent>
-                <Typography variant="h4" gutterBottom fontWeight="bold">Kreator Konkursu</Typography>
-                
-                <form onSubmit={handleSubmit}>
-                    <Stack spacing={4}>
-                        <Box sx={{ p: 2, bgcolor: '#f9f9f9', borderRadius: 2 }}>
-                            <Typography variant="h6" gutterBottom>Informacje Podstawowe</Typography>
-                            <Grid container spacing={2}>
-                                <Grid item xs={12} md={8}>
-                                    <TextField label="Nazwa Konkursu" fullWidth required value={name} onChange={e => setName(e.target.value)} />
-                                </Grid>
-                                <Grid item xs={12} md={4}>
-                                    <FormControl fullWidth>
-                                        <InputLabel>Kategoria</InputLabel>
-                                        <Select value={category} label="Kategoria" onChange={e => setCategory(e.target.value as any)}>
-                                            {Object.keys(ContestCategory).map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
-                                        </Select>
-                                    </FormControl>
-                                </Grid>
-                                <Grid item xs={12}>
-                                    <TextField label="Opis" multiline rows={3} fullWidth required value={description} onChange={e => setDescription(e.target.value)} />
-                                </Grid>
-                                
-                                {/* ✅ NOWY KOMPONENT WYBORU TŁA */}
-                                <Grid item xs={12}>
-                                    <TemplateSelector 
-                                        selectedKey={coverImageKey}
-                                        onSelect={setCoverImageKey}
-                                    />
-                                </Grid>
-
-                                <Grid item xs={12} md={6}>
-                                    <TextField label="Start Data" type="datetime-local" fullWidth required InputLabelProps={{ shrink: true }} value={startDate} onChange={e => setStartDate(e.target.value)} />
-                                </Grid>
-                                <Grid item xs={12} md={6}>
-                                    <TextField label="Koniec Data" type="datetime-local" fullWidth required InputLabelProps={{ shrink: true }} value={endDate} onChange={e => setEndDate(e.target.value)} />
-                                </Grid>
-                                <Grid item xs={12} md={6}>
-                                    <TextField label="Limit uczestników" type="number" fullWidth value={participantLimit} onChange={e => setParticipantLimit(e.target.value)} />
-                                </Grid>
-                                <Grid item xs={12} md={4}>
-                                    <FormControl fullWidth>
-                                        <InputLabel>Dozwolone Media</InputLabel>
-                                        <Select 
-                                            value={mediaPolicy} 
-                                            label="Dozwolone Media" 
-                                            onChange={e => setMediaPolicy(e.target.value as any)}
-                                        >
-                                            <MenuItem value="BOTH">Zdjęcia i Wideo</MenuItem>
-                                            <MenuItem value="IMAGES_ONLY">Tylko Zdjęcia</MenuItem>
-                                            <MenuItem value="VIDEOS_ONLY">Tylko Wideo</MenuItem>
-                                            <MenuItem value="NONE">Brak</MenuItem>
-                                        </Select>
-                                    </FormControl>
-                                </Grid>
-                                <Grid item xs={12} md={6}>
-                                    <FormControlLabel control={<Switch checked={isPrivate} onChange={e => setIsPrivate(e.target.checked)} />} label="Konkurs Prywatny" />
-                                </Grid>
-                            </Grid>
-                        </Box>
-
-                        <Divider />
-
-                        <Box>
-                            {/* ... (SEKCJA ETAPÓW - BEZ ZMIAN) ... */}
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                                <Typography variant="h5">Etapy ({stages.length})</Typography>
-                                <Button variant="outlined" startIcon={<AddCircleOutlineIcon />} onClick={handleOpenAddStage}>
-                                    Dodaj Etap
-                                </Button>
-                            </Box>
-
-                            <Stack spacing={2}>
-                                {stages.map((stage, index) => (
-                                    <Card key={stage.tempId} variant="outlined" sx={{ display: 'flex', alignItems: 'center', p: 2 }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '25%' }}>
-                                            <Chip label={`#${index + 1}`} color="primary" size="small" />
-                                            {getStageIcon(stage.type)}
-                                            <Typography fontWeight="bold">{stage.type}</Typography>
-                                        </Box>
-                                        <Box sx={{ flexGrow: 1 }}>
-                                            <Typography variant="subtitle1">{stage.name}</Typography>
-                                            <Typography variant="caption" color="text.secondary">
-                                                {stage.durationMinutes} min
-                                                {stage.type === 'QUIZ' && ` • Quiz ID: ${stage.referenceId}`}
-                                                {stage.type === 'SURVEY' && ` • Survey ID: ${stage.referenceId}`}
-                                            </Typography>
-                                        </Box>
-                                        <Stack direction="row">
-                                            <IconButton size="small" onClick={() => moveStage(index, -1)} disabled={index === 0}><ArrowUpwardIcon /></IconButton>
-                                            <IconButton size="small" onClick={() => moveStage(index, 1)} disabled={index === stages.length - 1}><ArrowDownwardIcon /></IconButton>
-                                            <IconButton color="error" onClick={() => removeStage(index)}><DeleteIcon /></IconButton>
-                                        </Stack>
-                                    </Card>
-                                ))}
-                                {stages.length === 0 && <Typography align="center" color="text.secondary">Brak etapów.</Typography>}
-                            </Stack>
-                        </Box>
-
-                        <Stack direction="row" spacing={2} justifyContent="flex-end">
-                            <Button onClick={onCancel} color="inherit">Anuluj</Button>
-                            <Button type="submit" variant="contained" size="large" disabled={isSubmitting} startIcon={isSubmitting ? <CircularProgress size={20}/> : <SaveIcon />}>
-                                {isSubmitting ? 'Tworzenie...' : 'Utwórz Konkurs'}
-                            </Button>
-                        </Stack>
-                    </Stack>
-                </form>
-
-                {/* ... (DIALOG DODAWANIA ETAPU - BEZ ZMIAN) ... */}
-                <Dialog open={isStageDialogOpen} onClose={() => setIsStageDialogOpen(false)} maxWidth="sm" fullWidth>
-                    {/* ... zawartość dialogu identyczna jak w oryginale ... */}
-                    <DialogTitle>Dodaj Nowy Etap</DialogTitle>
-                    <DialogContent dividers>
-                        <Stack spacing={3} sx={{ mt: 1 }}>
-                            <TextField label="Nazwa Etapu" fullWidth value={newStage.name} onChange={e => setNewStage({...newStage, name: e.target.value})} />
-                            
-                            <FormControl fullWidth>
-                                <InputLabel>Typ Etapu</InputLabel>
-                                <Select 
-                                    value={newStage.type} 
-                                    label="Typ Etapu"
-                                    onChange={handleTypeChange}
-                                >
-                                    <MenuItem value="QUIZ">Quiz (Gra na żywo)</MenuItem>
-                                    <MenuItem value="SURVEY">Ankieta (Opinie)</MenuItem>
-                                    <MenuItem value="JURY_VOTE">Głosowanie Jury</MenuItem>
-                                    <MenuItem value="PUBLIC_VOTE">Głosowanie Publiczne</MenuItem>
-                                    <MenuItem value="GENERIC">Inne</MenuItem>
-                                </Select>
-                            </FormControl>
-                            <TextField label="Czas trwania (min)" type="number" fullWidth value={newStage.durationMinutes} onChange={e => setNewStage({...newStage, durationMinutes: Number(e.target.value)})} />
-                            
-                            {(newStage.type === 'QUIZ' || newStage.type === 'SURVEY') && (
-                                <Autocomplete
-                                    options={resourceOptions}
-                                    getOptionLabel={(option) => option.title}
-                                    filterOptions={(x) => x}
-                                    value={selectedResource}
-                                    onChange={(event: any, newValue: any | null) => {
-                                        setSelectedResource(newValue);
-                                        setNewStage({ ...newStage, referenceId: newValue ? newValue.id : 0 });
-                                    }}
-                                    onInputChange={handleResourceSearch}
-                                    loading={isSearchingResource}
-                                    noOptionsText="Wpisz nazwę, aby wyszukać..."
-                                    renderInput={(params) => (
-                                        <TextField
-                                            {...params}
-                                            label={newStage.type === 'QUIZ' ? "Wyszukaj Quiz" : "Wyszukaj Ankietę"}
-                                            helperText="Wpisz nazwę szablonu, aby go znaleźć"
-                                            InputProps={{
-                                                ...params.InputProps,
-                                                endAdornment: (
-                                                    <React.Fragment>
-                                                        {isSearchingResource ? <CircularProgress color="inherit" size={20} /> : null}
-                                                        {params.InputProps.endAdornment}
-                                                    </React.Fragment>
-                                                ),
-                                            }}
-                                        />
-                                    )}
-                                />
-                            )}
-                            
-                            {newStage.type === 'QUIZ' && (
-                                <>
-                                    <Stack direction="row" spacing={2}>
-                                        <TextField label="Czas/Pytanie (s)" type="number" fullWidth value={newStage.timePerQuestion} onChange={e => setNewStage({...newStage, timePerQuestion: Number(e.target.value)})} />
-                                        <TextField label="Limit graczy" type="number" fullWidth value={newStage.maxParticipants} onChange={e => setNewStage({...newStage, maxParticipants: Number(e.target.value)})} />
-                                    </Stack>
-                                    <TextField label="Waga punktów" type="number" fullWidth value={newStage.weight} onChange={e => setNewStage({...newStage, weight: Number(e.target.value)})} />
-                                </>
-                            )}
-
-                            {newStage.type === 'SURVEY' && (
-                                <TextField 
-                                    label="Limit uczestników" type="number" fullWidth 
-                                    value={newStage.maxParticipants} 
-                                    onChange={e => setNewStage({...newStage, maxParticipants: Number(e.target.value)})} 
-                                />
-                            )}
-
-                            {(newStage.type === 'JURY_VOTE' || newStage.type === 'PUBLIC_VOTE') && (
-                                <Stack direction="row" spacing={2}>
-                                    <TextField label="Max Ocena" type="number" fullWidth value={newStage.maxScore} onChange={e => setNewStage({...newStage, maxScore: Number(e.target.value)})} />
-                                    <TextField label="Waga Etapu" type="number" fullWidth value={newStage.weight} onChange={e => setNewStage({...newStage, weight: Number(e.target.value)})} />
-                                </Stack>
-                            )}
-                        </Stack>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setIsStageDialogOpen(false)}>Anuluj</Button>
-                        <Button variant="contained" onClick={handleAddStageConfirm}>Dodaj</Button>
-                    </DialogActions>
-                </Dialog>
-            </CardContent>
+        <Card size="small" style={{ background: '#fafafa', marginBottom: 24, borderColor: '#f0f0f0' }}>
+          <Row gutter={24}>
+            <Col xs={24} md={8}>
+              <Form.Item name="mediaPolicy" label="Allowed Submissions" style={{ marginBottom: 0 }}>
+                <Select>
+                  <Select.Option value="BOTH">Photos and Videos</Select.Option>
+                  <Select.Option value="IMAGES_ONLY">Photos Only</Select.Option>
+                  <Select.Option value="VIDEOS_ONLY">Videos Only</Select.Option>
+                  <Select.Option value="NONE">None (Live Only)</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+               <Form.Item name="isPrivate" label="Visibility" valuePropName="checked" style={{ marginBottom: 0 }}>
+                 <Switch checkedChildren="Private" unCheckedChildren="Public" />
+               </Form.Item>
+            </Col>
+          </Row>
         </Card>
-    );
+
+        <Divider />
+
+        <TemplateSelector 
+          selectedKey={selectedTemplateKey} 
+          onSelect={setSelectedTemplateKey} 
+        />
+
+        <Divider />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <Title level={4} style={{ margin: 0 }}>Stages</Title>
+          <Button type="dashed" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+            Add Stage
+          </Button>
+        </div>
+
+        <List
+          itemLayout="horizontal"
+          dataSource={stages}
+          renderItem={(stage, index) => (
+            <List.Item
+              style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 8, marginBottom: 8, padding: 16, background: '#fff' }}
+              actions={[
+                 <Button key="up" size="small" type="text" icon={<ArrowUpOutlined />} disabled={index === 0} onClick={() => moveStage(index, -1)} />,
+                 <Button key="down" size="small" type="text" icon={<ArrowDownOutlined />} disabled={index === stages.length - 1} onClick={() => moveStage(index, 1)} />,
+                 <Button key="del" size="small" type="text" danger icon={<DeleteOutlined />} onClick={() => removeStage(index)} />
+              ]}
+            >
+              <List.Item.Meta
+                avatar={<div style={{ fontSize: 24, marginTop: 4 }}>{getStageIcon(stage.type)}</div>}
+                title={
+                  <Space>
+                    <Tag color="orange">#{index + 1}</Tag>
+                    <Text strong>{stage.name}</Text>
+                    <Tag>{stage.type}</Tag>
+                  </Space>
+                }
+                description={
+                  <Space split="|">
+                    <Text type="secondary">{stage.durationMinutes} min</Text>
+                    {stage.referenceId && <Text type="secondary">Template ID: {stage.referenceId}</Text>}
+                    {stage.weight !== 1 && <Text type="secondary">Weight: {stage.weight}x</Text>}
+                  </Space>
+                }
+              />
+            </List.Item>
+          )}
+        />
+        
+        {stages.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '24px', background: '#f5f5f5', borderRadius: 8, color: '#999' }}>
+            No stages. Click "Add Stage" to get started.
+          </div>
+        )}
+
+        <Divider style={{ margin: '32px 0' }} />
+
+        <Row justify="end" gutter={16}>
+          <Col>
+            <Button size="large" onClick={onCancel}>Cancel</Button>
+          </Col>
+          <Col>
+            <Button 
+              type="primary" 
+              htmlType="submit" 
+              size="large" 
+              icon={<SaveOutlined />} 
+              loading={isSubmitting}
+            >
+              Create Contest
+            </Button>
+          </Col>
+        </Row>
+      </Form>
+
+      <StageConfigurationModal 
+        open={isModalOpen} 
+        onCancel={() => setIsModalOpen(false)}
+        onAdd={addStage}
+      />
+    </Card>
+  );
 };

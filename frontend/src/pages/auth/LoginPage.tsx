@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
-import { Container, Typography, CircularProgress } from '@mui/material';
+import { Spin } from 'antd';
 import { useNavigate } from 'react-router-dom';
-
 import { LoginForm } from '@/features/auth/components/LoginForm'; 
 import { useAuth } from '@/features/auth/AuthContext';
 
@@ -17,24 +16,30 @@ const LoginPage = () => {
 
     if (isInitializing) {
         return (
-            <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-                <CircularProgress />
-                <Typography sx={{ ml: 2 }}>Checking session...</Typography>
-            </Container>
+            <div style={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                minHeight: '100vh',
+                flexDirection: 'column',
+                gap: '16px'
+            }}>
+                <Spin size="large" />
+                <span>Checking session...</span>
+            </div>
         );
     }
     
     return (
-        <Container
-            sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: '100vh',
-            }}
-        >
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '100vh',
+            backgroundColor: '#f0f2f5'
+        }}>
             <LoginForm />
-        </Container>
+        </div>
     );
 };
 

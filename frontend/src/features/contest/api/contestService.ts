@@ -9,7 +9,8 @@ import type {
     SubmissionStatus,
     ContestParticipantDto,
     SubmissionDto,
-    ReviewAction
+    ReviewAction,
+    TemplateDto
 } from '../model/types';
 
 import type { PublicContestParams } from '../model/specification';
