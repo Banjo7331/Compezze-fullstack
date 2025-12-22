@@ -1,21 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    Box, Typography, Paper, Divider, Stack, CircularProgress, Alert, Button
-} from '@mui/material';
-import ListAltIcon from '@mui/icons-material/ListAlt';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import GridViewIcon from '@mui/icons-material/GridView';
+    Card, Typography, Divider, Button, List, Spin, 
+    message, Space, Tag 
+} from 'antd';
+import { 
+    ThunderboltOutlined, 
+    PlayCircleOutlined, 
+    AppstoreOutlined,
+    LockOutlined,
+    GlobalOutlined
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
 import { quizService } from '../api/quizService';
 import type { MyQuizFormDto, CreateQuizRoomRequest } from '../model/types';
-import { useSnackbar } from '@/app/providers/SnackbarProvider';
 
 import { AllQuizFormsDialog } from './AllQuizFormsDialog';
 import { StartQuizRoomDialog } from './StartQuizRoomDialog';
+
+const { Title, Text } = Typography;
+
 export const QuizFeaturedTemplatesWidget: React.FC = () => {
     const navigate = useNavigate();
-    const { showSuccess, showError } = useSnackbar();
+    const [messageApi, contextHolder] = message.useMessage();
     
     const [forms, setForms] = useState<MyQuizFormDto[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -56,87 +63,98 @@ export const QuizFeaturedTemplatesWidget: React.FC = () => {
             };
             
             const result = await quizService.createRoom(request);
-            showSuccess("Lobby utworzone!");
+            messageApi.success("Lobby created!");
             navigate(`/quiz/room/${result.roomId}`);
             
         } catch (e) {
-            showError("Nie udało się utworzyć gry.");
+            messageApi.error("Failed to create game room.");
             setIsStarting(false);
         }
     };
 
     return (
         <>
-            <Paper elevation={3} sx={{ p: 4, height: '100%', backgroundColor: '#fff3e0', borderRadius: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <ListAltIcon sx={{ mr: 1, fontSize: 30, color: 'warning.dark' }} />
-                    <Typography variant="h5" component="h2" color="text.primary">
-                        Szybka Gra
-                    </Typography>
-                </Box>
+            {contextHolder}
+            <Card 
+                style={{ 
+                    height: '100%', 
+                    backgroundColor: '#fff7e6', 
+                    borderRadius: 12,
+                    border: '1px solid #ffd591' 
+                }}
+                bodyStyle={{ padding: 32 }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+                    <ThunderboltOutlined style={{ marginRight: 12, fontSize: 24, color: '#fa8c16' }} />
+                    <Title level={4} style={{ margin: 0 }}>Quick Play</Title>
+                </div>
                 
-                <Divider sx={{ mb: 3 }} />
+                <Divider style={{ margin: '16px 0 24px 0', borderColor: '#ffec3d' }} />
 
-                <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-                    Twoje ostatnie quizy:
-                </Typography>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+                    Your recent quizzes:
+                </Text>
 
-                <Stack spacing={2}>
-                    {isLoading && <CircularProgress size={20} sx={{alignSelf:'center'}} />}
-                    
-                    {forms.map((quiz) => (
-                        <Paper 
-                            key={quiz.id}
-                            elevation={1} 
-                            sx={{ 
-                                p: 2, 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                alignItems: 'center', 
-                                borderLeft: `5px solid ${quiz.isPrivate ? 'gray' : '#ed6c02'}` 
-                            }}
-                        >
-                            <Box sx={{ overflow: 'hidden' }}>
-                                <Typography variant="subtitle2" fontWeight="bold" noWrap>
-                                    {quiz.title}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                    {quiz.questionsCount} pytań • {quiz.isPrivate ? 'Prywatny' : 'Publiczny'}
-                                </Typography>
-                            </Box>
-                            
-                            <Button 
-                                size="small" 
-                                variant="contained"
-                                color="warning"
-                                startIcon={<PlayArrowIcon />}
-                                onClick={() => handleOpenStartDialog(quiz.id)}
-                                sx={{ minWidth: 'auto', px: 2 }}
-                            >
-                                GRAJ
-                            </Button>
-                        </Paper>
-                    ))}
-                    
-                    {!isLoading && forms.length === 0 && (
-                        <Typography variant="caption" align="center" display="block">
-                            Brak quizów. Stwórz pierwszy!
-                        </Typography>
-                    )}
-                </Stack>
+                {isLoading ? (
+                    <div style={{ textAlign: 'center', padding: 20 }}><Spin /></div>
+                ) : forms.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: 20, color: '#999' }}>
+                        No quizzes found. Create your first one!
+                    </div>
+                ) : (
+                    <List
+                        dataSource={forms}
+                        split={false}
+                        renderItem={(quiz) => (
+                            <List.Item style={{ padding: '8px 0' }}>
+                                <Card 
+                                    size="small"
+                                    style={{ 
+                                        width: '100%', 
+                                        borderLeft: `4px solid ${quiz.isPrivate ? '#8c8c8c' : '#fa8c16'}` 
+                                    }}
+                                    bodyStyle={{ padding: '12px 16px' }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div style={{ overflow: 'hidden', marginRight: 16 }}>
+                                            <Text strong style={{ display: 'block' }} ellipsis>
+                                                {quiz.title}
+                                            </Text>
+                                            <Space size={4} style={{ fontSize: 12, color: '#8c8c8c' }}>
+                                                <span>{quiz.questionsCount} Qs</span>
+                                                <span>•</span>
+                                                {quiz.isPrivate ? <LockOutlined /> : <GlobalOutlined />}
+                                                <span>{quiz.isPrivate ? 'Private' : 'Public'}</span>
+                                            </Space>
+                                        </div>
+                                        
+                                        <Button 
+                                            type="primary" 
+                                            size="small"
+                                            style={{ backgroundColor: '#fa8c16', borderColor: '#fa8c16' }}
+                                            icon={<PlayCircleOutlined />}
+                                            onClick={() => handleOpenStartDialog(quiz.id)}
+                                        >
+                                            PLAY
+                                        </Button>
+                                    </div>
+                                </Card>
+                            </List.Item>
+                        )}
+                    />
+                )}
 
-                <Box sx={{ mt: 3, textAlign: 'center' }}>
+                <div style={{ marginTop: 24, textAlign: 'center' }}>
                     <Button 
-                        variant="outlined" 
-                        color="warning"
-                        fullWidth 
-                        startIcon={<GridViewIcon />}
-                        onClick={() => setIsAllFormsDialogOpen(true)} 
+                        block
+                        icon={<AppstoreOutlined />}
+                        onClick={() => setIsAllFormsDialogOpen(true)}
+                        style={{ color: '#fa8c16', borderColor: '#fa8c16' }}
                     >
-                        Wszystkie Quizy
+                        Browse All Quizzes
                     </Button>
-                </Box>
-            </Paper>
+                </div>
+            </Card>
 
             <AllQuizFormsDialog 
                 open={isAllFormsDialogOpen} 

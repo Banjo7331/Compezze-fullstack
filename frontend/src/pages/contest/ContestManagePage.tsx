@@ -1,77 +1,146 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-    Container, Paper, Typography, Table, TableBody, TableCell, 
-    TableHead, TableRow, Chip, Button, Box, TextField, InputAdornment, 
-    CircularProgress, Alert
-} from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import SearchIcon from '@mui/icons-material/Search';
-import SettingsIcon from '@mui/icons-material/Settings';
-import { debounce } from '@mui/material/utils';
+    Card, Table, Tag, Button, Input, Typography, 
+    Space, Modal, Checkbox, Popconfirm, message, Tooltip 
+} from 'antd';
+import { 
+    ArrowLeftOutlined, 
+    SearchOutlined, 
+    EditOutlined, 
+    DeleteOutlined,
+    UserOutlined
+} from '@ant-design/icons';
 
 import { contestService } from '@/features/contest/api/contestService';
 import type { ContestParticipantDto, ContestRole } from '@/features/contest/model/types';
-import { useSnackbar } from '@/app/providers/SnackbarProvider';
-import { ContestParticipantManagerDialog } from '@/features/contest/components/ContestParticipantManagerDialog';
+
+const { Title, Text } = Typography;
+
+interface ManagerModalProps {
+    open: boolean;
+    onClose: () => void;
+    participant: ContestParticipantDto | null;
+    isProcessing: boolean;
+    onToggleRole: (role: ContestRole, hasRole: boolean) => void;
+    onDeleteSubmission: (submissionId: string) => void;
+}
+
+const ParticipantManagerModal: React.FC<ManagerModalProps> = ({
+    open, onClose, participant, isProcessing, onToggleRole, onDeleteSubmission
+}) => {
+    if (!participant) return null;
+
+    const availableRoles: ContestRole[] = ['COMPETITOR', 'JURY', 'MODERATOR'];
+
+    return (
+        <Modal
+            title={`Manage: ${participant.displayName}`}
+            open={open}
+            onCancel={onClose}
+            footer={[
+                <Button key="close" onClick={onClose}>Close</Button>
+            ]}
+        >
+            <div style={{ marginBottom: 24 }}>
+                <Text strong style={{ display: 'block', marginBottom: 8 }}>Roles & Permissions</Text>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {availableRoles.map(role => {
+                        const hasRole = participant.roles.includes(role);
+                        return (
+                            <Checkbox
+                                key={role}
+                                checked={hasRole}
+                                disabled={isProcessing}
+                                onChange={() => onToggleRole(role, hasRole)}
+                            >
+                                {role}
+                            </Checkbox>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {participant.submissionId && (
+                <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 16 }}>
+                    <Text strong style={{ display: 'block', marginBottom: 8 }}>Submission Management</Text>
+                    <Popconfirm
+                        title="Delete submission"
+                        description="Are you sure you want to delete this submission? This action cannot be undone."
+                        onConfirm={() => onDeleteSubmission(participant.submissionId!)}
+                        okText="Yes, Delete"
+                        cancelText="No"
+                        okButtonProps={{ danger: true, loading: isProcessing }}
+                    >
+                        <Button danger icon={<DeleteOutlined />} loading={isProcessing}>
+                            Reject & Delete Submission
+                        </Button>
+                    </Popconfirm>
+                </div>
+            )}
+        </Modal>
+    );
+};
 
 const ContestManagePage: React.FC = () => {
     const { contestId } = useParams<{ contestId: string }>();
     const navigate = useNavigate();
-    const { showSuccess, showError } = useSnackbar();
 
     const [participants, setParticipants] = useState<ContestParticipantDto[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedQuery, setDebouncedQuery] = useState('');
 
     const [selectedUser, setSelectedUser] = useState<ContestParticipantDto | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
 
-    const fetchParticipants = async (query = '') => {
-        if (!query.trim()) {
-            setParticipants([]);
-            setIsLoading(false);
-            return;
-        }
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedQuery(searchQuery);
+        }, 500);
+        return () => clearTimeout(handler);
+    }, [searchQuery]);
 
-        setIsLoading(true);
-        try {
-            const data = await contestService.getParticipants(contestId!, query);
-            setParticipants(data.slice(0, 10));
-        } catch (e) {
-            console.error(e);
-            showError("Nie udało się wyszukać uczestników.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    useEffect(() => {
+        const fetchParticipants = async () => {
+            if (!debouncedQuery.trim()) {
+                setParticipants([]);
+                return;
+            }
 
-    const debouncedSearch = useMemo(
-        () => debounce((query: string) => fetchParticipants(query), 500),
-        []
-    );
+            setIsLoading(true);
+            try {
+                const data = await contestService.getParticipants(contestId!, debouncedQuery);
+                setParticipants(data.slice(0, 10));
+            } catch (e) {
+                console.error(e);
+                message.error("Failed to search participants.");
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchQuery(e.target.value);
-        debouncedSearch(e.target.value);
-    };
+        if (contestId) fetchParticipants();
+    }, [debouncedQuery, contestId]);
+
 
     const handleToggleRole = async (role: ContestRole, hasRole: boolean) => {
         if (!selectedUser) return;
         setIsProcessing(true);
         try {
             await contestService.manageRole(contestId!, selectedUser.userId, role, !hasRole);
-            showSuccess(`Rola ${role} zaktualizowana.`);
+            message.success(`Role ${role} updated.`);
             
-            if (searchQuery) {
-                const updatedList = await contestService.getParticipants(contestId!, searchQuery);
+            if (debouncedQuery) {
+                const updatedList = await contestService.getParticipants(contestId!, debouncedQuery);
                 setParticipants(updatedList.slice(0, 10));
                 
                 const updatedUser = updatedList.find(u => u.id === selectedUser.id);
                 if(updatedUser) setSelectedUser(updatedUser);
             }
         } catch (e) {
-            showError("Błąd zmiany roli.");
+            message.error("Failed to update role.");
         } finally {
             setIsProcessing(false);
         }
@@ -82,110 +151,118 @@ const ContestManagePage: React.FC = () => {
         setIsProcessing(true);
         try {
             await contestService.deleteSubmission(contestId!, submissionId);
-            showSuccess("Zgłoszenie odrzucone.");
+            message.success("Submission rejected.");
             
-            if (searchQuery) {
-                const updatedList = await contestService.getParticipants(contestId!, searchQuery);
+            if (debouncedQuery) {
+                const updatedList = await contestService.getParticipants(contestId!, debouncedQuery);
                 setParticipants(updatedList.slice(0, 10));
                 
                 const updatedUser = updatedList.find(u => u.id === selectedUser.id);
                 if(updatedUser) setSelectedUser(updatedUser);
             }
         } catch (e) {
-            showError("Błąd usuwania zgłoszenia.");
+            message.error("Failed to delete submission.");
         } finally {
             setIsProcessing(false);
         }
     };
 
+    const columns = [
+        {
+            title: 'User',
+            dataIndex: 'displayName',
+            key: 'displayName',
+            render: (text: string, record: ContestParticipantDto) => (
+                <Space>
+                    <Text strong>{text}</Text>
+                    {record.submissionId && (
+                        <Tooltip title="User has a submission">
+                            <Tag color="blue">Submission</Tag>
+                        </Tooltip>
+                    )}
+                </Space>
+            ),
+        },
+        {
+            title: 'Roles',
+            dataIndex: 'roles',
+            key: 'roles',
+            render: (roles: ContestRole[]) => (
+                <>
+                    {roles.length > 0 ? roles.map(role => {
+                        let color = 'default';
+                        if (role === 'MODERATOR') color = 'purple';
+                        if (role === 'JURY') color = 'gold';
+                        if (role === 'COMPETITOR') color = 'cyan';
+                        return (
+                            <Tag color={color} key={role}>
+                                {role}
+                            </Tag>
+                        );
+                    }) : <Text type="secondary" style={{ fontSize: 12 }}>No roles</Text>}
+                </>
+            ),
+        },
+        {
+            title: 'Actions',
+            key: 'action',
+            align: 'right' as const,
+            render: (_: any, record: ContestParticipantDto) => (
+                <Button 
+                    icon={<EditOutlined />} 
+                    size="small"
+                    onClick={() => setSelectedUser(record)}
+                >
+                    Manage
+                </Button>
+            ),
+        },
+    ];
+
     return (
-        <Container maxWidth="md" sx={{ py: 4 }}>
-            <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} sx={{ mb: 2 }}>
-                Wróć
+        <div style={{ padding: '24px', maxWidth: 900, margin: '0 auto' }}>
+            <Button 
+                icon={<ArrowLeftOutlined />} 
+                onClick={() => navigate(-1)} 
+                style={{ marginBottom: 16 }}
+            >
+                Back
             </Button>
             
-            <Paper elevation={3} sx={{ p: 4 }}>
-                <Box sx={{ mb: 3 }}>
-                    <Typography variant="h5" fontWeight="bold" gutterBottom>Zarządzanie Uczestnikami</Typography>
-                    <Typography variant="body2" color="text.secondary" paragraph>
-                        Wpisz nazwę użytkownika, aby nadać mu uprawnienia lub zarządzać jego zgłoszeniem.
-                    </Typography>
-                    
-                    <TextField 
-                        fullWidth
-                        size="medium" 
-                        placeholder="Szukaj uczestnika po nazwie..." 
+            <Card 
+                title={<Title level={4} style={{ margin: 0 }}>Participant Management</Title>}
+                bordered={false}
+                style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+            >
+                <div style={{ marginBottom: 24 }}>
+                    <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                        Search for a user by name to manage their permissions or submissions.
+                    </Text>
+                    <Input 
+                        size="large"
+                        placeholder="Search participant by name..." 
+                        prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
                         value={searchQuery}
-                        onChange={handleSearchChange}
-                        InputProps={{
-                            startAdornment: <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment>
-                        }}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        allowClear
                     />
-                </Box>
+                </div>
 
-                {isLoading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-                        <CircularProgress />
-                    </Box>
-                ) : (
-                    <>
-                        {participants.length > 0 ? (
-                            <Table>
-                                <TableHead sx={{ bgcolor: '#f5f5f5' }}>
-                                    <TableRow>
-                                        <TableCell>Użytkownik</TableCell>
-                                        <TableCell>Role</TableCell>
-                                        <TableCell align="right">Akcje</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {participants.map((p) => (
-                                        <TableRow key={p.id} hover>
-                                            <TableCell sx={{ fontWeight: 'medium' }}>
-                                                {p.displayName}
-                                                {p.submissionId && <Chip label="Zgłoszenie" size="small" color="primary" variant="outlined" sx={{ ml: 1, fontSize: '0.65rem', height: 20 }} />}
-                                            </TableCell>
-                                            <TableCell>
-                                                {p.roles.map(r => (
-                                                    <Chip 
-                                                        key={r} 
-                                                        label={r} 
-                                                        size="small" 
-                                                        sx={{ mr: 0.5 }} 
-                                                        color={r === 'MODERATOR' ? 'secondary' : r === 'JURY' ? 'warning' : 'default'} 
-                                                        variant={r === 'COMPETITOR' ? 'outlined' : 'filled'}
-                                                    />
-                                                ))}
-                                                {p.roles.length === 0 && <Typography variant="caption" color="text.disabled">Brak ról</Typography>}
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                <Button 
-                                                    variant="outlined" 
-                                                    size="small" 
-                                                    startIcon={<SettingsIcon />}
-                                                    onClick={() => setSelectedUser(p)}
-                                                >
-                                                    Edytuj
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        ) : (
-                            <Box sx={{ textAlign: 'center', py: 4, bgcolor: '#fafafa', borderRadius: 2 }}>
-                                {searchQuery ? (
-                                    <Typography color="text.secondary">Nie znaleziono uczestników pasujących do zapytania.</Typography>
-                                ) : (
-                                    <Typography color="text.disabled">Wpisz frazę powyżej, aby zobaczyć wyniki.</Typography>
-                                )}
-                            </Box>
-                        )}
-                    </>
-                )}
-            </Paper>
+                <Table
+                    columns={columns}
+                    dataSource={participants}
+                    rowKey="id"
+                    loading={isLoading}
+                    pagination={false}
+                    locale={{
+                        emptyText: searchQuery 
+                            ? "No participants found matching your query." 
+                            : "Start typing to search..."
+                    }}
+                />
+            </Card>
 
-            <ContestParticipantManagerDialog 
+            <ParticipantManagerModal 
                 open={!!selectedUser}
                 onClose={() => setSelectedUser(null)}
                 participant={selectedUser}
@@ -193,7 +270,7 @@ const ContestManagePage: React.FC = () => {
                 onToggleRole={handleToggleRole}
                 onDeleteSubmission={handleDeleteSubmission}
             />
-        </Container>
+        </div>
     );
 };
 

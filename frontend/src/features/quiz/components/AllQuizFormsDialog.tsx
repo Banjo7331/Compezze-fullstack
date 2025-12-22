@@ -1,7 +1,8 @@
 import React from 'react';
-import { Dialog, DialogContent, DialogTitle, IconButton, Typography } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
+import { Modal, Typography } from 'antd';
 import { AllQuizTemplatesList } from './AllQuizTemplatesList';
+
+const { Title } = Typography;
 
 interface AllQuizFormsDialogProps {
     open: boolean;
@@ -10,31 +11,22 @@ interface AllQuizFormsDialogProps {
 
 export const AllQuizFormsDialog: React.FC<AllQuizFormsDialogProps> = ({ open, onClose }) => {
     return (
-        <Dialog 
-            open={open} 
-            onClose={onClose} 
-            maxWidth="md" 
-            fullWidth
-            scroll="paper" 
-            PaperProps={{
-                sx: {
-                    maxHeight: '85vh', 
-                    minHeight: '50vh'
-                }
+        <Modal
+            title={<Title level={4} style={{ margin: 0 }}>All Available Quizzes</Title>}
+            open={open}
+            onCancel={onClose}
+            width={800}
+            footer={null}
+            centered
+            bodyStyle={{ 
+                padding: 0,
+                maxHeight: '70vh', 
+                overflowY: 'auto' 
             }}
         >
-            <DialogTitle component="div" sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#f5f5f5' }}>
-                <Typography variant="h6" component="h2" fontWeight="bold">
-                    Wszystkie Dostępne Quizy
-                </Typography>
-                <IconButton aria-label="close" onClick={onClose}>
-                    <CloseIcon />
-                </IconButton>
-            </DialogTitle>
-            
-            <DialogContent dividers sx={{ p: 0 }}>
+            <div style={{ padding: 24 }}>
                 <AllQuizTemplatesList />
-            </DialogContent>
-        </Dialog>
+            </div>
+        </Modal>
     );
 };

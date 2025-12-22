@@ -1,20 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    Box, Typography, Paper, Stack, Chip, IconButton, Pagination, CircularProgress, Tooltip 
-} from '@mui/material';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
-import PersonIcon from '@mui/icons-material/Person';
+import { List, Typography, Tag, Button, Pagination, Spin, Tooltip, Empty, Space } from 'antd';
+import { TrophyOutlined, HistoryOutlined, UserOutlined } from '@ant-design/icons';
 
 import { quizService } from '../api/quizService';
 import type { MyQuizRoomDto } from '../model/types';
 import { QuizHistoryDialog } from './QuizHistoryDialog';
 
+const { Text } = Typography;
+
 export const MyQuizHistory: React.FC = () => {
     const [rooms, setRooms] = useState<MyQuizRoomDto[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [page, setPage] = useState(0);
-    const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
 
     const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -25,7 +23,7 @@ export const MyQuizHistory: React.FC = () => {
             try {
                 const data = await quizService.getMyRoomsHistory({ page, size: 5, sort: 'createdAt,desc' });
                 setRooms(data.content);
-                setTotalPages(data.totalPages);
+                setTotalItems(data.totalElements);
             } catch (e) {
                 console.error(e);
             } finally {
@@ -40,56 +38,61 @@ export const MyQuizHistory: React.FC = () => {
         setIsDialogOpen(true);
     };
 
-    if (isLoading) return <CircularProgress sx={{ display: 'block', mx: 'auto', my: 4 }} />;
-    if (rooms.length === 0) return <Typography color="text.secondary" align="center" sx={{ py: 4 }}>Brak historii gier.</Typography>;
+    if (isLoading && rooms.length === 0) return <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>;
+    if (rooms.length === 0) return <Empty description="No game history found." image={Empty.PRESENTED_IMAGE_SIMPLE} />;
 
     return (
-        <Box>
-            <Stack spacing={2}>
-                {rooms.map((room) => (
-                    <Paper 
-                        key={room.roomId} 
-                        variant="outlined" 
-                        sx={{ 
-                            p: 2, 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center',
-                            borderLeft: `4px solid ${room.status === 'FINISHED' ? '#9e9e9e' : '#ed6c02'}`
+        <div>
+            <List
+                dataSource={rooms}
+                renderItem={(room) => (
+                    <List.Item
+                        actions={[
+                            <Tooltip title="View Leaderboard" key="view">
+                                <Button 
+                                    type="text" 
+                                    icon={<TrophyOutlined style={{ color: '#fa8c16' }} />} 
+                                    onClick={() => handleOpenResults(room.roomId)}
+                                />
+                            </Tooltip>
+                        ]}
+                        style={{ 
+                            padding: '16px', 
+                            borderLeft: `4px solid ${room.status === 'FINISHED' ? '#d9d9d9' : '#fa8c16'}`,
+                            marginBottom: 16,
+                            background: '#fff',
+                            border: '1px solid #f0f0f0',
+                            borderRadius: 4
                         }}
                     >
-                        <Box>
-                            <Typography variant="subtitle1" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <SportsEsportsIcon fontSize="small" color="warning" />
-                                {room.quizTitle}
-                            </Typography>
-                            
-                            <Stack direction="row" spacing={2} sx={{ mt: 1 }} alignItems="center">
-                                <Chip 
-                                    label={room.status === 'FINISHED' ? "ZAKOŃCZONY" : "W TRAKCIE"} 
-                                    color={room.status === 'FINISHED' ? "default" : "warning"} 
-                                    size="small" 
-                                />
-                                <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                    <span><PersonIcon fontSize="inherit" sx={{ verticalAlign: 'middle', mr: 0.5 }}/> {room.totalParticipants} graczy</span>
-                                    <span>{new Date(room.createdAt).toLocaleDateString()}</span>
-                                </Typography>
-                            </Stack>
-                        </Box>
-                        
-                        <Tooltip title="Zobacz Ranking">
-                            <IconButton color="warning" onClick={() => handleOpenResults(room.roomId)}>
-                                <EmojiEventsIcon />
-                            </IconButton>
-                        </Tooltip>
-                    </Paper>
-                ))}
-            </Stack>
+                        <List.Item.Meta
+                            avatar={<HistoryOutlined style={{ fontSize: 24, color: '#fa8c16' }} />}
+                            title={<Text strong>{room.quizTitle}</Text>}
+                            description={
+                                <Space wrap>
+                                    <Tag color={room.status === 'FINISHED' ? 'default' : 'orange'}>
+                                        {room.status === 'FINISHED' ? "FINISHED" : "IN PROGRESS"}
+                                    </Tag>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                        <UserOutlined /> {room.totalParticipants} players • {new Date(room.createdAt).toLocaleDateString()}
+                                    </Text>
+                                </Space>
+                            }
+                        />
+                    </List.Item>
+                )}
+            />
 
-            {totalPages > 1 && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-                    <Pagination count={totalPages} page={page + 1} onChange={(_, v) => setPage(v - 1)} color="primary" />
-                </Box>
+            {totalItems > 5 && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+                    <Pagination 
+                        current={page + 1} 
+                        total={totalItems} 
+                        pageSize={5}
+                        onChange={(p) => setPage(p - 1)} 
+                        size="small"
+                    />
+                </div>
             )}
 
             <QuizHistoryDialog 
@@ -97,6 +100,6 @@ export const MyQuizHistory: React.FC = () => {
                 roomId={selectedRoomId} 
                 onClose={() => setIsDialogOpen(false)} 
             />
-        </Box>
+        </div>
     );
 };

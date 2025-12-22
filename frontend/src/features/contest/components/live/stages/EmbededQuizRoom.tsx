@@ -9,9 +9,9 @@ import { QuizRoomStatus } from '@/features/quiz/model/types';
 import { useSnackbar } from '@/app/providers/SnackbarProvider';
 
 // Widoki
-import { QuizLobby } from '@/features/quiz/components/QuizLobby';
-import { QuizGameView } from '@/features/quiz/components/QuizGameView';
-import { QuizResultView } from '@/features/quiz/components/QuizResultView';
+import { QuizLobby } from '@/features/quiz/components/live/QuizLobby';
+import { QuizGameView } from '@/features/quiz/components/live/QuizGameView';
+import { QuizResultView } from '@/features/quiz/components/live/QuizResultView';
 
 interface Props {
     roomId: string;

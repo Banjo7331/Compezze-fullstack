@@ -1,25 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Container, Box, Alert, TextField, Paper, Typography, CircularProgress, Grid } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { Button } from '@/shared/ui/Button';
+import { 
+    Layout, Card, Alert, Input, Button, Typography, 
+    Spin, Row, Col, Modal, message, Space 
+} from 'antd';
+import { CloseOutlined, ArrowLeftOutlined, LoginOutlined } from '@ant-design/icons';
 
 import { useQuizRoomSocket } from '@/features/quiz/hooks/useQuizRoomSocket';
 import { quizService } from '@/features/quiz/api/quizService';
 import { QuizRoomStatus } from '@/features/quiz/model/types';
 import { useAuth } from '@/features/auth/AuthContext';
 
-import { QuizLobby } from '@/features/quiz/components/QuizLobby';
-import { QuizGameView } from '@/features/quiz/components/QuizGameView';
-import { QuizResultView } from '@/features/quiz/components/QuizResultView';
-import { InviteUsersPanel } from '@/features/quiz/components/InviteUserPanel';
+import { QuizLobby } from '@/features/quiz/components/live/QuizLobby';
+import { QuizGameView } from '@/features/quiz/components/live/QuizGameView';
+import { QuizResultView } from '@/features/quiz/components/live/QuizResultView';
+import { InviteUsersPanel } from '@/features/quiz/components/live/InviteUserPanel';
+
+const { Content } = Layout;
+const { Title, Text } = Typography;
 
 const QuizRoomPage: React.FC = () => {
     const { roomId } = useParams<{ roomId: string }>();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const { currentUser } = useAuth(); 
+    const [messageApi, contextHolder] = message.useMessage();
     
     const [isJoined, setIsJoined] = useState(false);
     const [isHost, setIsHost] = useState(false);
@@ -29,7 +34,7 @@ const QuizRoomPage: React.FC = () => {
     const [isJoining, setIsJoining] = useState(false);
     const [isLoadingCheck, setIsLoadingCheck] = useState(true);
 
-    const { status, currentQuestion, participantsCount, leaderboard, finalResults } = useQuizRoomSocket(roomId || '');
+    const { status, currentQuestion, leaderboard, finalResults } = useQuizRoomSocket(roomId || '');
 
     useEffect(() => {
         if (!roomId) return;
@@ -39,18 +44,16 @@ const QuizRoomPage: React.FC = () => {
                 const details = await quizService.getRoomDetails(roomId);
                 
                 if (currentUser && details.hostId === currentUser.id) {
-                    console.log("Wykryto Hosta. Automatyczne dołączanie...");
                     await quizService.joinRoom(roomId, "HOST"); 
                     setIsHost(true);
                     setIsJoined(true);
                 }
                 else if (details.participant){
-                    console.log("Wykryto powracającego Gracza.");
                     setIsJoined(true);
                 }
             } catch (e) {
-                console.error("Błąd inicjalizacji pokoju", e);
-                setJoinError("Nie udało się załadować pokoju.");
+                console.error(e);
+                setJoinError("Failed to load room.");
             } finally {
                 setIsLoadingCheck(false);
             }
@@ -71,7 +74,7 @@ const QuizRoomPage: React.FC = () => {
             setIsJoined(true);
         } catch (e: any) {
             console.error(e);
-            setJoinError("Nie udało się dołączyć. Sprawdź ksywkę lub czy masz zaproszenie.");
+            setJoinError("Failed to join. Check nickname or invitation.");
         } finally {
             setIsJoining(false);
         }
@@ -79,16 +82,25 @@ const QuizRoomPage: React.FC = () => {
 
     const handleStartGame = async () => {
         if (!roomId) return;
-        if (window.confirm("Czy na pewno rozpocząć Quiz?")) {
-            await quizService.startQuiz(roomId);
-        }
+        Modal.confirm({
+            title: "Start Quiz?",
+            content: "Are you sure you want to start the game?",
+            onOk: async () => {
+                await quizService.startQuiz(roomId);
+            }
+        });
     };
 
     const handleCloseRoom = async () => {
         if (!roomId) return;
-        if(window.confirm("Czy na pewno zakończyć sesję?")) {
-            await quizService.closeRoom(roomId);
-        }
+        Modal.confirm({
+            title: "End Session?",
+            content: "Are you sure you want to close the room for everyone?",
+            okType: 'danger',
+            onOk: async () => {
+                await quizService.closeRoom(roomId);
+            }
+        });
     };
 
     const handleFinishQuestionManually = async () => {
@@ -106,132 +118,131 @@ const QuizRoomPage: React.FC = () => {
         await quizService.submitAnswer(roomId, currentQuestion.questionId, optionId);
     };
 
-    if (!roomId) return <Alert severity="error">Brak ID pokoju</Alert>;
-    if (isLoadingCheck) return <CircularProgress sx={{ display: 'block', mx: 'auto', mt: 10 }} />;
+    if (!roomId) return <Alert message="Error" description="Missing Room ID" type="error" showIcon />;
+    if (isLoadingCheck) return <div style={{ display: 'flex', justifyContent: 'center', marginTop: 100 }}><Spin size="large" /></div>;
 
     if (!isJoined) {
         return (
-            <Container maxWidth="sm" sx={{ mt: 8 }}>
-                <Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}>
-                    <Typography variant="h5" gutterBottom fontWeight="bold">Witaj w Quizie!</Typography>
-                    <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
-                        Podaj nazwę, pod którą będziesz widoczny w rankingu.
-                    </Typography>
+            <div style={{ maxWidth: 400, margin: '100px auto', padding: 20 }}>
+                <Card>
+                    <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                        <Title level={3}>Join Quiz</Title>
+                        <Text type="secondary">Enter your nickname to join the leaderboard.</Text>
+                    </div>
                     
-                    <TextField 
-                        label="Twoja Ksywka" 
-                        fullWidth 
+                    <Input 
+                        placeholder="Your Nickname" 
+                        size="large"
                         value={nickname} 
                         onChange={(e) => setNickname(e.target.value)}
-                        error={!!joinError}
-                        helperText={joinError}
+                        status={joinError ? 'error' : ''}
                         disabled={isJoining}
                         autoFocus
+                        onPressEnter={handleJoin}
+                        style={{ marginBottom: 8 }}
                     />
+                    
+                    {joinError && <Alert message={joinError} type="error" showIcon style={{ marginBottom: 16 }} />}
+
                     <Button 
-                        variant="contained" 
-                        fullWidth 
-                        sx={{ mt: 3 }} 
+                        type="primary" 
+                        size="large" 
+                        block 
                         onClick={handleJoin}
-                        disabled={!nickname || isJoining}
+                        loading={isJoining}
+                        disabled={!nickname}
+                        icon={<LoginOutlined />}
                     >
-                        {isJoining ? <CircularProgress size={24} color="inherit"/> : "DOŁĄCZ DO GRY"}
+                        JOIN GAME
                     </Button>
-                </Paper>
-            </Container>
+                </Card>
+            </div>
         );
     }
 
     return (
-        <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Layout style={{ minHeight: '100vh', background: '#f0f2f5' }}>
+            {contextHolder}
+            <Content style={{ padding: '24px', maxWidth: 1200, margin: '0 auto', width: '100%' }}>
 
-            {isHost && status !== QuizRoomStatus.FINISHED && (
-                <Paper 
-                    elevation={2} 
-                    sx={{ 
-                        p: 2, mb: 4, 
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                        bgcolor: '#fff3e0', borderLeft: '5px solid #ed6c02'
-                    }}
-                >
-                    <Typography fontWeight="bold" variant="subtitle1">👑 Panel Hosta</Typography>
-                    <Box>
-                        <Button color="error" size="small" onClick={handleCloseRoom} startIcon={<CloseIcon />}>
-                            Zakończ Sesję
-                        </Button>
-                    </Box>
-                </Paper>
-            )}
+                {isHost && status !== QuizRoomStatus.FINISHED && (
+                    <Alert
+                        message={<Text strong>👑 Host Panel</Text>}
+                        description="You are controlling this session."
+                        type="warning"
+                        showIcon
+                        action={
+                            <Button size="small" danger onClick={handleCloseRoom} icon={<CloseOutlined />}>
+                                End Session
+                            </Button>
+                        }
+                        style={{ marginBottom: 24 }}
+                    />
+                )}
 
-            {status === QuizRoomStatus.LOBBY && (
-                <Grid container spacing={4}>
-                    {/* LEWA STRONA: Lista graczy i przycisk start */}
-                    <Grid size={{ xs: 12, md: isHost ? 8 : 12 }}>
-                        <QuizLobby 
-                            isHost={isHost} 
-                            roomId={roomId}
-                            participants={leaderboard || []} 
-                            onStart={handleStartGame} 
-                        />
-                    </Grid>
+                {status === QuizRoomStatus.LOBBY && (
+                    <Row gutter={[24, 24]}>
+                        <Col xs={24} md={isHost ? 16 : 24}>
+                            <QuizLobby 
+                                isHost={isHost} 
+                                roomId={roomId}
+                                participants={leaderboard || []} 
+                                onStart={handleStartGame} 
+                            />
+                        </Col>
 
-                    {/* PRAWA STRONA: Panel Zaproszeń (TYLKO HOST) */}
-                    {isHost && (
-                        <Grid size={{ xs: 12, md: 4 }}>
-                            <Box sx={{ mt: { xs: 0, md: 14 } }}> {/* Opcjonalny odstęp, żeby wyrównać z ikoną pada */}
+                        {isHost && (
+                            <Col xs={24} md={8}>
                                 <InviteUsersPanel roomId={roomId} />
-                            </Box>
-                        </Grid>
-                    )}
-                </Grid>
-            )}
+                            </Col>
+                        )}
+                    </Row>
+                )}
 
-            {status === QuizRoomStatus.QUESTION_ACTIVE && currentQuestion && (
-                <QuizGameView 
-                    question={currentQuestion as any} 
-                    isHost={isHost}
-                    onSubmitAnswer={handleSubmitAnswer}
-                    onFinishEarly={handleFinishQuestionManually}
-                />
-            )}
+                {status === QuizRoomStatus.QUESTION_ACTIVE && currentQuestion && (
+                    <QuizGameView 
+                        question={currentQuestion as any} 
+                        isHost={isHost}
+                        onSubmitAnswer={handleSubmitAnswer}
+                        onFinishEarly={handleFinishQuestionManually}
+                    />
+                )}
 
-            {(status === QuizRoomStatus.QUESTION_FINISHED) && (
-                <QuizResultView 
-                    status={status}
-                    isHost={isHost}
-                    leaderboard={leaderboard || []}
-                    onNext={handleNextQuestion}
-                    onClose={handleCloseRoom}
-                />
-            )}
-
-            {status === QuizRoomStatus.FINISHED && (
-                <Box>
+                {(status === QuizRoomStatus.QUESTION_FINISHED) && (
                     <QuizResultView 
                         status={status}
                         isHost={isHost}
-                        leaderboard={finalResults?.leaderboard || leaderboard || []}
-                        onNext={() => {}}
-                        onClose={() => {}} // Pusta funkcja, bo QuizResultView już nie ma przycisków dla FINISHED
+                        leaderboard={leaderboard || []}
+                        onNext={handleNextQuestion}
+                        onClose={handleCloseRoom}
                     />
+                )}
 
-                    {/* ✅ PRZYCISKI WYJŚCIA (Tylko tutaj, w QuizRoomPage) */}
-                    <Box sx={{ mt: 4, textAlign: 'center' }}>
-                        <Button 
-                            variant="contained" 
-                            size="large" 
-                            color={isHost ? "primary" : "secondary"}
-                            onClick={() => navigate('/quiz')}
-                            startIcon={<ArrowBackIcon />}
-                            sx={{ px: 4, py: 1.5, borderRadius: 4 }}
-                        >
-                            {isHost ? "Wróć do Panelu Hosta" : "Wyjdź z Gry"}
-                        </Button>
-                    </Box>
-                </Box>
-            )}
+                {status === QuizRoomStatus.FINISHED && (
+                    <div>
+                        <QuizResultView 
+                            status={status}
+                            isHost={isHost}
+                            leaderboard={finalResults?.leaderboard || leaderboard || []}
+                            onNext={() => {}}
+                            onClose={() => {}} 
+                        />
 
-        </Container>
+                        <div style={{ marginTop: 32, textAlign: 'center' }}>
+                            <Button 
+                                type={isHost ? "primary" : "default"}
+                                size="large" 
+                                onClick={() => navigate('/quiz')}
+                                icon={<ArrowLeftOutlined />}
+                            >
+                                {isHost ? "Back to Dashboard" : "Leave Game"}
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+            </Content>
+        </Layout>
     );
 };
 

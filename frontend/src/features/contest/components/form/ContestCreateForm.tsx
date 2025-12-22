@@ -11,8 +11,8 @@ import {
 import dayjs, { type Dayjs } from 'dayjs';
 
 import { useSnackbar } from '@/app/providers/SnackbarProvider';
-import { contestService } from '../api/contestService';
-import { ContestCategory, type CreateContestRequest } from '../model/types';
+import { contestService } from '../../api/contestService';
+import { ContestCategory, type CreateContestRequest } from '../../model/types';
 
 import { TemplateSelector } from './TemplateSelector';
 import { StageConfigurationModal, type StageFormValues } from './StageConfigurationModal';

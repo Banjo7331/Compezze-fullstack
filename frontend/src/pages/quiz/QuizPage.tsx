@@ -1,88 +1,115 @@
 import React from 'react';
+import { Typography, Row, Col, Card, Button } from 'antd';
 import { 
-    Typography, Container, Box, Paper, Grid 
-} from '@mui/material';
-import type { ButtonProps } from '@mui/material'; 
-import AddIcon from '@mui/icons-material/Add';
-import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
-import { Button } from '@/shared/ui/Button'; 
+    PlusOutlined, 
+    TrophyOutlined, 
+    RocketOutlined 
+} from '@ant-design/icons';
 import { Link } from 'react-router-dom';
-import type { LinkProps } from 'react-router-dom'; 
 
 import { QuizActiveRoomsList } from '@/features/quiz/components/QuizActiveRoomList';
 import { QuizFeaturedTemplatesWidget } from '@/features/quiz/components/QuizFeaturedTemplatesWidget';
 
+const { Title, Text, Paragraph } = Typography;
+
 const QuizPage: React.FC = () => {
-    const LinkButton = Button as React.ComponentType<ButtonProps & Pick<LinkProps, 'to'>>;
-
     return (
-        <Container maxWidth="lg">
-            <Box sx={{ my: 4 }}>
-                <Box sx={{ textAlign: 'center', mb: 6 }}>
-                    <Typography variant="h3" component="h1" gutterBottom fontWeight="bold" color="primary">
-                        <SportsEsportsIcon sx={{ fontSize: 50, verticalAlign: 'middle', mr: 2 }} />
-                        Centrum Quizów
-                    </Typography>
-                    <Typography variant="h6" color="text.secondary">
-                        Rywalizuj na żywo, zdobywaj punkty i wygrywaj!
-                    </Typography>
-                </Box>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 16px' }}>
+            <div style={{ margin: '32px 0' }}>
+                
+                <div style={{ textAlign: 'center', marginBottom: 48 }}>
+                    <Title level={1} style={{ marginBottom: 8, color: '#fa8c16' }}>
+                        <TrophyOutlined style={{ fontSize: 48, verticalAlign: 'middle', marginRight: 16 }} />
+                        Quiz Center
+                    </Title>
+                    <Paragraph type="secondary" style={{ fontSize: 18 }}>
+                        Compete live, earn points, and win!
+                    </Paragraph>
+                </div>
 
-                <Grid container spacing={4}>
+                <Row gutter={[32, 32]}>
                     
-                    <Grid size={{ xs: 12, md: 5 }}>
-                        <Paper 
-                            elevation={6} 
-                            sx={{ 
-                                p: 4, 
+                    <Col xs={24} md={10} lg={9}>
+                        <Card 
+                            bordered={false}
+                            hoverable
+                            style={{ 
                                 height: '100%', 
-                                display: 'flex', 
-                                flexDirection: 'column', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                backgroundColor: '#fff3e0', 
-                                borderRadius: 3,
-                                minHeight: 300 
+                                backgroundColor: '#fff7e6',
+                                borderRadius: 12,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                textAlign: 'center',
+                                minHeight: 300,
+                                border: '1px solid #ffd591'
+                            }}
+                            bodyStyle={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '100%',
+                                padding: 32
                             }}
                         >
-                            <AddIcon sx={{ fontSize: 80, color: 'warning.main', mb: 2 }} />
-                            <Typography variant="h4" component="h2" align="center" sx={{ mb: 1 }}>
-                                Nowy Quiz
-                            </Typography>
-                            <Typography variant="body1" align="center" sx={{ mb: 3, color: 'text.secondary' }}>
-                                Stwórz grę z pytaniami na czas i punktami.
-                            </Typography>
-                            <LinkButton 
-                                variant="contained"
-                                color="warning"
-                                size="large"
-                                startIcon={<AddIcon />}
-                                component={Link}
-                                to="/quiz/create"
-                            >
-                                KREATOR QUIZU
-                            </LinkButton>
-                        </Paper>
-                    </Grid>
+                            <PlusOutlined style={{ fontSize: 80, color: '#fa8c16', marginBottom: 16 }} />
+                            
+                            <Title level={2} style={{ margin: '0 0 8px 0' }}>
+                                New Quiz
+                            </Title>
+                            
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 24, fontSize: 16 }}>
+                                Create a game with timed questions and points.
+                            </Text>
 
-                    <Grid size={{ xs: 12, md: 7 }}>
+                            <Link to="/quiz/create">
+                                <Button 
+                                    type="primary" 
+                                    size="large" 
+                                    icon={<PlusOutlined />}
+                                    style={{ 
+                                        backgroundColor: '#fa8c16', 
+                                        borderColor: '#fa8c16',
+                                        height: 48,
+                                        fontSize: 16,
+                                        padding: '0 32px'
+                                    }}
+                                >
+                                    QUIZ CREATOR
+                                </Button>
+                            </Link>
+                        </Card>
+                    </Col>
+
+                    <Col xs={24} md={14} lg={15}>
                         <QuizFeaturedTemplatesWidget />
-                    </Grid>
+                    </Col>
 
-                    <Grid size={{ xs: 12 }}>
-                        <Box sx={{ mt: 6 }}>
-                            <Typography variant="h4" gutterBottom sx={{ borderBottom: '1px solid #ddd', pb: 1, mb: 3, display: 'flex', alignItems: 'center' }}>
-                                🎮 Dostępne Gry (Active Lobbies)
-                            </Typography>
+                    <Col span={24}>
+                        <div style={{ marginTop: 48 }}>
+                            <div style={{ 
+                                borderBottom: '1px solid #f0f0f0', 
+                                paddingBottom: 16, 
+                                marginBottom: 24,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 12
+                            }}>
+                                <RocketOutlined style={{ fontSize: 32, color: '#1890ff' }} />
+                                <Title level={2} style={{ margin: 0 }}>
+                                    Active Lobbies
+                                </Title>
+                            </div>
                             
                             <QuizActiveRoomsList />
-                            
-                        </Box>
-                    </Grid>
+                        </div>
+                    </Col>
 
-                </Grid>
-            </Box>
-        </Container>
+                </Row>
+            </div>
+        </div>
     );
 };
 

@@ -1,26 +1,22 @@
-// features/quiz/components/AllQuizTemplatesList.tsx
-
 import React, { useEffect, useState } from 'react';
-import { 
-    Box, List, ListItem, ListItemText, ListItemButton, 
-    CircularProgress, Alert, Pagination, TextField, InputAdornment, Typography 
-} from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
-import DescriptionIcon from '@mui/icons-material/Description';
+import { List, Input, Pagination, Spin, Typography, Avatar, Empty } from 'antd';
+import { SearchOutlined, FileTextOutlined, LockOutlined, GlobalOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 
 import { quizService } from '../api/quizService';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 import type { GetQuizFormSummaryResponse } from '../model/types';
-import { useNavigate } from 'react-router-dom';
+
+const { Text } = Typography;
 
 export const AllQuizTemplatesList: React.FC = () => {
     const navigate = useNavigate();
     const [forms, setForms] = useState<GetQuizFormSummaryResponse[]>([]);
     const [loading, setLoading] = useState(true);
+    
     const [page, setPage] = useState(0);
-    const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
 
-    // ✅ Wyszukiwarka
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebounce(search, 500);
 
@@ -32,10 +28,10 @@ export const AllQuizTemplatesList: React.FC = () => {
                     page, 
                     size: 10, 
                     sort: 'title,asc',
-                    search: debouncedSearch // ✅
+                    search: debouncedSearch 
                 });
                 setForms(data.content);
-                setTotalPages(data.totalPages);
+                setTotalItems(data.totalElements);
             } catch (e) {
                 console.error(e);
             } finally {
@@ -47,53 +43,76 @@ export const AllQuizTemplatesList: React.FC = () => {
 
     useEffect(() => { setPage(0); }, [debouncedSearch]);
 
-    if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>;
+    if (loading && forms.length === 0) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+                <Spin size="large" />
+            </div>
+        );
+    }
 
     return (
-        <Box>
-            {/* ✅ Pasek szukania wewnątrz modala */}
-            <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0', bgcolor: '#fafafa' }}>
-                <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Wpisz nazwę quizu..."
+        <div>
+            <div style={{ padding: '16px', borderBottom: '1px solid #f0f0f0', background: '#fafafa' }}>
+                <Input
+                    size="large"
+                    placeholder="Search quizzes..."
+                    prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <SearchIcon color="action" />
-                            </InputAdornment>
-                        ),
-                    }}
+                    allowClear
                 />
-            </Box>
+            </div>
 
-            {forms.length === 0 ? (
-                <Box sx={{ p: 4, textAlign: 'center' }}>
-                    <Typography color="text.secondary">Nie znaleziono quizów.</Typography>
-                </Box>
-            ) : (
-                <List sx={{ p: 0 }}>
-                    {forms.map((form) => (
-                        <ListItem key={form.id} disablePadding divider>
-                            <ListItemButton onClick={() => navigate(`/quiz/create/${form.id}`)}>
-                                <DescriptionIcon color="primary" sx={{ mr: 2 }} />
-                                <ListItemText 
-                                    primary={form.title} 
-                                    secondary={form.isPrivate ? "Prywatny" : "Publiczny"} 
+            <List
+                itemLayout="horizontal"
+                dataSource={forms}
+                loading={loading}
+                locale={{
+                    emptyText: <Empty description="No quiz templates found." />
+                }}
+                renderItem={(form) => (
+                    <List.Item
+                        style={{ 
+                            cursor: 'pointer', 
+                            padding: '16px 24px',
+                            transition: 'background-color 0.3s'
+                        }}
+                        className="quiz-list-item"
+                        onClick={() => navigate(`/quiz/create/${form.id}`)}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                        <List.Item.Meta
+                            avatar={
+                                <Avatar 
+                                    style={{ backgroundColor: '#1890ff' }} 
+                                    icon={<FileTextOutlined />} 
                                 />
-                            </ListItemButton>
-                        </ListItem>
-                    ))}
-                </List>
-            )}
+                            }
+                            title={<Text strong>{form.title}</Text>}
+                            description={
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                                    {form.isPrivate ? <LockOutlined /> : <GlobalOutlined />}
+                                    <span>{form.isPrivate ? "Private" : "Public"}</span>
+                                </div>
+                            }
+                        />
+                    </List.Item>
+                )}
+            />
 
-            {totalPages > 1 && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-                    <Pagination count={totalPages} page={page + 1} onChange={(_, v) => setPage(v - 1)} />
-                </Box>
+            {totalItems > 10 && (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '16px' }}>
+                    <Pagination 
+                        current={page + 1}
+                        total={totalItems} 
+                        pageSize={10}
+                        onChange={(p) => setPage(p - 1)}
+                        showSizeChanger={false}
+                    />
+                </div>
             )}
-        </Box>
+        </div>
     );
 };

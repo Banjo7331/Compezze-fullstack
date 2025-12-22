@@ -1,28 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    Box, Typography, Paper, IconButton, Stack, Pagination, 
-    CircularProgress, Alert, Chip, Tooltip 
-} from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+    List, Typography, Button, Pagination, Spin, Tooltip, 
+    Popconfirm, message, Space, Empty, Tag 
+} from 'antd';
+import { 
+    DeleteOutlined, 
+    PlayCircleOutlined, 
+    PlusOutlined,
+    LockOutlined,
+    GlobalOutlined
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
 import { quizService } from '../api/quizService';
-import { useSnackbar } from '@/app/providers/SnackbarProvider';
-import { Button } from '@/shared/ui/Button';
 import type { MyQuizFormDto, CreateQuizRoomRequest } from '../model/types';
-
 import { StartQuizRoomDialog } from './StartQuizRoomDialog';
+
+const { Text } = Typography;
 
 export const MyQuizTemplatesList: React.FC = () => {
     const navigate = useNavigate();
-    const { showSuccess, showError } = useSnackbar();
+    const [messageApi, contextHolder] = message.useMessage();
     
     const [forms, setForms] = useState<MyQuizFormDto[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [page, setPage] = useState(0);
-    const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     const [startDialogOpen, setStartDialogOpen] = useState(false);
@@ -35,7 +38,7 @@ export const MyQuizTemplatesList: React.FC = () => {
             try {
                 const data = await quizService.getMyForms({ page, size: 5, sort: 'createdAt,desc' });
                 setForms(data.content);
-                setTotalPages(data.totalPages);
+                setTotalItems(data.totalElements);
             } catch (e) {
                 console.error(e);
             } finally {
@@ -46,13 +49,12 @@ export const MyQuizTemplatesList: React.FC = () => {
     }, [page, refreshTrigger]);
 
     const handleDelete = async (id: number) => {
-        if (!window.confirm("Czy na pewno usunąć ten Quiz?")) return;
         try {
             await quizService.deleteForm(id);
-            showSuccess("Quiz usunięty.");
+            messageApi.success("Quiz deleted.");
             setRefreshTrigger(p => p + 1);
         } catch (e: any) {
-            showError("Nie udało się usunąć (może są aktywne gry?).");
+            messageApi.error("Failed to delete (active games might exist).");
         }
     };
 
@@ -71,58 +73,91 @@ export const MyQuizTemplatesList: React.FC = () => {
                 isPrivate: false 
             };
             const result = await quizService.createRoom(request);
-            showSuccess("Lobby utworzone!");
+            messageApi.success("Lobby created!");
             navigate(`/quiz/room/${result.roomId}`);
         } catch (e) {
-            showError("Błąd startu.");
+            messageApi.error("Start failed.");
             setIsStarting(false);
         }
     };
 
-    if (isLoading) return <CircularProgress sx={{ display: 'block', mx: 'auto', my: 4 }} />;
+    if (isLoading && forms.length === 0) return <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>;
 
     if (forms.length === 0) {
         return (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography color="text.secondary" gutterBottom>Brak quizów.</Typography>
-                <Button variant="outlined" startIcon={<AddIcon />} onClick={() => navigate('/quiz/create')}>
-                    Stwórz pierwszy
+            <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="No quizzes found."
+            >
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/quiz/create')}>
+                    Create your first Quiz
                 </Button>
-            </Box>
+            </Empty>
         );
     }
 
     return (
-        <Box sx={{ maxHeight: '400px', overflowY: 'auto', pr: 1 }}>
-            <Stack spacing={2}>
-                {forms.map((form) => (
-                    <Paper key={form.id} variant="outlined" sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '5px solid #ed6c02' }}>
-                        <Box>
-                            <Typography variant="subtitle1" fontWeight="bold">{form.title}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                                {form.questionsCount} pytań • {form.isPrivate ? "Prywatny" : "Publiczny"} • {new Date(form.createdAt).toLocaleDateString()}
-                            </Typography>
-                        </Box>
-                        <Box>
-                            <Tooltip title="Graj">
-                                <IconButton color="warning" onClick={() => handleOpenStartDialog(form.id)}>
-                                    <PlayArrowIcon />
-                                </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Usuń">
-                                <IconButton color="error" onClick={() => handleDelete(form.id)}>
-                                    <DeleteIcon />
-                                </IconButton>
-                            </Tooltip>
-                        </Box>
-                    </Paper>
-                ))}
-            </Stack>
+        <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: 4 }}>
+            {contextHolder}
+            <List
+                dataSource={forms}
+                renderItem={(form) => (
+                    <List.Item
+                        actions={[
+                            <Tooltip title="Play" key="play">
+                                <Button 
+                                    type="text" 
+                                    icon={<PlayCircleOutlined style={{ color: '#fa8c16', fontSize: 18 }} />} 
+                                    onClick={() => handleOpenStartDialog(form.id)}
+                                />
+                            </Tooltip>,
+                            <Popconfirm
+                                title="Delete this quiz?"
+                                description="Are you sure to delete this quiz?"
+                                onConfirm={() => handleDelete(form.id)}
+                                okText="Yes"
+                                cancelText="No"
+                                key="delete"
+                            >
+                                <Button type="text" danger icon={<DeleteOutlined />} />
+                            </Popconfirm>
+                        ]}
+                        style={{ 
+                            padding: '12px 16px', 
+                            borderLeft: '4px solid #fa8c16',
+                            marginBottom: 12,
+                            background: '#fff',
+                            border: '1px solid #f0f0f0',
+                            borderRadius: 4
+                        }}
+                    >
+                        <List.Item.Meta
+                            title={<Text strong>{form.title}</Text>}
+                            description={
+                                <Space size={4} style={{ fontSize: 12 }}>
+                                    <span>{form.questionsCount} Qs</span>
+                                    <span>•</span>
+                                    {form.isPrivate ? <LockOutlined /> : <GlobalOutlined />}
+                                    <span>{form.isPrivate ? "Private" : "Public"}</span>
+                                    <span>•</span>
+                                    <span>{new Date(form.createdAt).toLocaleDateString()}</span>
+                                </Space>
+                            }
+                        />
+                    </List.Item>
+                )}
+            />
 
-            {totalPages > 1 && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-                    <Pagination count={totalPages} page={page + 1} onChange={(_, v) => setPage(v - 1)} color="primary" />
-                </Box>
+            {totalItems > 5 && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+                    <Pagination 
+                        current={page + 1} 
+                        total={totalItems} 
+                        pageSize={5} 
+                        onChange={(p) => setPage(p - 1)} 
+                        size="small" 
+                    />
+                </div>
             )}
 
             <StartQuizRoomDialog 
@@ -134,6 +169,6 @@ export const MyQuizTemplatesList: React.FC = () => {
                 }}
                 onConfirm={handleConfirmStart}
             />
-        </Box>
+        </div>
     );
 };

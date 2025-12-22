@@ -1,342 +1,377 @@
 import React, { useState } from 'react';
 import { 
-    Typography, TextField, Box, Stack, Card, CardContent, 
-    IconButton, MenuItem, Select, FormControl, InputLabel, 
-    FormControlLabel, Switch, Grid, Paper, CircularProgress, 
-    Radio, Checkbox, Divider, InputAdornment
-} from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import SaveIcon from '@mui/icons-material/Save';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import StarIcon from '@mui/icons-material/Star';
+    Card, Form, Input, Button, Switch, Select, InputNumber, 
+    Divider, Typography, Row, Col, Checkbox, 
+    Popconfirm, message, Collapse, Space, Tooltip 
+} from 'antd';
+import { 
+    PlusOutlined, 
+    SaveOutlined, 
+    ArrowLeftOutlined, 
+    DeleteOutlined, 
+    MinusCircleOutlined,
+    SettingOutlined,
+    CheckCircleOutlined
+} from '@ant-design/icons';
 
-import { Button } from '@/shared/ui/Button'; 
 import { quizService } from '../api/quizService'; 
-import { useSnackbar } from '@/app/providers/SnackbarProvider';
 import { QuestionType } from '../model/types';
 import type { CreateQuizFormRequest } from '../model/types';
 
-interface OptionDraft {
-    text: string;
-    isCorrect: boolean;
-}
-
-interface QuestionDraft {
-    id: number;
-    title: string;
-    type: typeof QuestionType[keyof typeof QuestionType];
-    points: number;
-    options: OptionDraft[];
-}
+const { Text } = Typography;
+const { Option } = Select;
 
 interface QuizCreateFormProps {
     onCancel: () => void;
     onSuccess: () => void;
 }
 
-const DEFAULT_OPTIONS_SINGLE: OptionDraft[] = [
-    { text: '', isCorrect: true },
-    { text: '', isCorrect: false }
-];
+const DEFAULT_OPTION = { text: '', isCorrect: false };
 
-const DEFAULT_OPTIONS_TF: OptionDraft[] = [
+const DEFAULT_TRUE_FALSE_OPTIONS = [
     { text: 'Prawda', isCorrect: true },
     { text: 'Fałsz', isCorrect: false }
 ];
 
+const DEFAULT_QUESTION = {
+    title: '',
+    type: QuestionType.SINGLE_CHOICE,
+    points: 1000,
+    options: [
+        { text: '', isCorrect: true },
+        { text: '', isCorrect: false }
+    ]
+};
+
 export const QuizCreateForm: React.FC<QuizCreateFormProps> = ({ onCancel, onSuccess }) => {
-    const { showSuccess, showError } = useSnackbar();
-
-    const [title, setTitle] = useState('');
-    const [isPrivate, setIsPrivate] = useState(false);
+    const [form] = Form.useForm();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
-    const [questions, setQuestions] = useState<QuestionDraft[]>([
-        { 
-            id: Date.now(), 
-            title: '', 
-            type: QuestionType.SINGLE_CHOICE, 
-            points: 1000,
-            options: JSON.parse(JSON.stringify(DEFAULT_OPTIONS_SINGLE))
-        }
-    ]);
+    const [messageApi, contextHolder] = message.useMessage();
 
-    const addQuestion = () => {
-        if (questions.length >= 50) return;
-        setQuestions([
-            ...questions,
-            { 
-                id: Date.now(), 
-                title: '', 
-                type: QuestionType.SINGLE_CHOICE, 
-                points: 1000,
-                options: JSON.parse(JSON.stringify(DEFAULT_OPTIONS_SINGLE))
-            }
-        ]);
-    };
+    const [activeKey, setActiveKey] = useState<string | string[]>(['0']);
 
-    const removeQuestion = (id: number) => {
-        if (questions.length <= 1) return;
-        setQuestions(questions.filter(q => q.id !== id));
-    };
+    const handleValuesChange = (changedValues: any, allValues: any) => {
+        if (changedValues.questions) {
+            changedValues.questions.forEach((changedQ: any, qIndex: number) => {
+                if (!changedQ) return;
 
-    const updateQuestion = (id: number, field: keyof QuestionDraft, value: any) => {
-        setQuestions(questions.map(q => {
-            if (q.id === id) {
-                if (field === 'type') {
-                    const newType = value;
+                if (changedQ.type) {
+                    const newType = changedQ.type;
+                    const currentQuestions = [...allValues.questions];
+                    
                     if (newType === QuestionType.TRUE_FALSE) {
-                        return { ...q, type: newType, options: JSON.parse(JSON.stringify(DEFAULT_OPTIONS_TF)) };
+                        currentQuestions[qIndex].options = DEFAULT_TRUE_FALSE_OPTIONS;
+                    } else if (allValues.questions[qIndex].options.length === 2 && allValues.questions[qIndex].options[0].text === 'Prawda') {
+                        currentQuestions[qIndex].options = [
+                            { text: '', isCorrect: true },
+                            { text: '', isCorrect: false }
+                        ];
                     }
-                    if (q.type === QuestionType.TRUE_FALSE && newType !== QuestionType.TRUE_FALSE) {
-                        return { ...q, type: newType, options: JSON.parse(JSON.stringify(DEFAULT_OPTIONS_SINGLE)) };
-                    }
-                    if (newType === QuestionType.SINGLE_CHOICE) {
-                         const firstCorrect = q.options.findIndex(o => o.isCorrect);
-                         const safeIndex = firstCorrect !== -1 ? firstCorrect : 0;
-                         const newOptions = q.options.map((o, i) => ({ ...o, isCorrect: i === safeIndex }));
-                         return { ...q, type: newType, options: newOptions };
-                    }
+                    form.setFieldsValue({ questions: currentQuestions });
                 }
-                return { ...q, [field]: value };
-            }
-            return q;
-        }));
-    };
 
-    const handleOptionTextChange = (qId: number, oIndex: number, text: string) => {
-        setQuestions(questions.map(q => {
-            if (q.id === qId) {
-                const newOptions = [...q.options];
-                newOptions[oIndex] = { ...newOptions[oIndex], text };
-                return { ...q, options: newOptions };
-            }
-            return q;
-        }));
-    };
-
-    const handleCorrectChange = (qId: number, oIndex: number) => {
-        setQuestions(questions.map(q => {
-            if (q.id === qId) {
-                const newOptions = [...q.options];
-                if (q.type === QuestionType.SINGLE_CHOICE || q.type === QuestionType.TRUE_FALSE) {
-                    newOptions.forEach((o, i) => o.isCorrect = (i === oIndex));
-                } else {
-                    newOptions[oIndex].isCorrect = !newOptions[oIndex].isCorrect;
+                if (changedQ.options) {
+                    changedQ.options.forEach((changedOpt: any, oIndex: number) => {
+                        if (changedOpt && changedOpt.isCorrect === true) {
+                            const currentType = allValues.questions[qIndex].type;
+                            
+                            if (currentType === QuestionType.SINGLE_CHOICE || currentType === QuestionType.TRUE_FALSE) {
+                                const currentOptions = allValues.questions[qIndex].options;
+                                const newOptions = currentOptions.map((opt: any, idx: number) => ({
+                                    ...opt,
+                                    isCorrect: idx === oIndex
+                                }));
+                                
+                                const newQuestions = [...allValues.questions];
+                                newQuestions[qIndex].options = newOptions;
+                                form.setFieldsValue({ questions: newQuestions });
+                            }
+                        }
+                    });
                 }
-                return { ...q, options: newOptions };
-            }
-            return q;
-        }));
+            });
+        }
     };
 
-    const addOption = (qId: number) => {
-        setQuestions(questions.map(q => {
-            if (q.id === qId && q.options.length < CHOICES_MAX) {
-                return { ...q, options: [...q.options, { text: '', isCorrect: false }] };
-            }
-            return q;
-        }));
-    };
-
-    const removeOption = (qId: number, oIndex: number) => {
-        setQuestions(questions.map(q => {
-            if (q.id === qId) {
-                const newOptions = q.options.filter((_, i) => i !== oIndex);
-                return { ...q, options: newOptions };
-            }
-            return q;
-        }));
-    };
-
-    const TITLE_MIN = 3;
-    const TITLE_MAX = 50;
-    const QUESTIONS_MAX = 20;
-    const CHOICES_MAX = 6;
-
-    const isTitleValid = title.length >= TITLE_MIN && title.length <= TITLE_MAX;
-    const hasEnoughQuestions = questions.length > 0;
-
-    const areQuestionsValid = questions.every(q => {
-        const titleOk = q.title.trim().length > 0;
-        const optionsOk = q.options.every(o => o.text.trim().length > 0);
-        const correctOk = q.options.some(o => o.isCorrect);
-        return titleOk && optionsOk && correctOk;
-    });
-
-    const isFormValid = isTitleValid && hasEnoughQuestions && areQuestionsValid && !isSubmitting;
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!isFormValid) return;
-
+    const onFinish = async (values: any) => {
         setIsSubmitting(true);
-
-        const payload: CreateQuizFormRequest = {
-            title,
-            isPrivate,
-            questions: questions.map(q => ({
-                title: q.title,
-                type: q.type,
-                points: q.points,
-                options: q.options
-            }))
-        };
-
         try {
+            const questions = values.questions || [];
+            for (let i = 0; i < questions.length; i++) {
+                const q = questions[i];
+                const hasCorrect = q.options.some((o: any) => o.isCorrect);
+                if (!hasCorrect) {
+                    messageApi.error(`Pytanie #${i + 1} musi mieć zaznaczoną poprawną odpowiedź.`);
+                    setActiveKey(String(i));
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
+            const payload: CreateQuizFormRequest = {
+                title: values.title,
+                isPrivate: values.isPrivate || false,
+                questions: values.questions
+            };
+
             await quizService.createForm(payload);
-            showSuccess("Quiz utworzony pomyślnie!");
+            messageApi.success("Quiz został utworzony pomyślnie!");
             onSuccess();
         } catch (error) {
-            console.error("Error creating quiz:", error);
-            showError("Wystąpił błąd podczas tworzenia quizu.");
+            console.error(error);
+            messageApi.error("Wystąpił błąd podczas tworzenia quizu.");
         } finally {
             setIsSubmitting(false);
         }
     };
 
+    const genExtra = (removeFn: (index: number | number[]) => void, name: number, length: number) => (
+        <Popconfirm 
+            title="Usunąć to pytanie?" 
+            onConfirm={(e) => {
+                e?.stopPropagation();
+                removeFn(name);
+            }}
+            onCancel={(e) => e?.stopPropagation()}
+        >
+            <Button 
+                type="text" 
+                danger 
+                icon={<DeleteOutlined />} 
+                disabled={length <= 1}
+                onClick={(e) => e.stopPropagation()} 
+            />
+        </Popconfirm>
+    );
+
     return (
-        <Card component={Paper} elevation={6} sx={{ p: 4 }}>
-            <CardContent>
-                <form onSubmit={handleSubmit}>
-                    <Stack spacing={4}>
-                        
-                        <Box>
-                            <Typography variant="h6" gutterBottom>Ustawienia Główne</Typography>
-                            <Stack spacing={2}>
-                                <TextField
-                                    fullWidth
-                                    label={`Tytuł Quizu (${TITLE_MIN}-${TITLE_MAX} znaków)`}
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                    required
-                                    error={title.length > 0 && !isTitleValid}
-                                    helperText={title.length > 0 && !isTitleValid ? "Nieprawidłowa długość tytułu" : ""}
-                                />
-                                <FormControlLabel
-                                    control={<Switch checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} />}
-                                    label="Quiz Prywatny (tylko na zaproszenie)"
-                                />
-                            </Stack>
-                        </Box>
+        <Card style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+            {contextHolder}
+            <Form
+                form={form}
+                layout="vertical"
+                onFinish={onFinish}
+                onValuesChange={handleValuesChange}
+                initialValues={{
+                    title: '',
+                    isPrivate: false,
+                    questions: [DEFAULT_QUESTION]
+                }}
+            >
+                <Row gutter={24}>
+                    <Col xs={24} md={16}>
+                        <Form.Item
+                            name="title"
+                            label="Tytuł Quizu"
+                            rules={[
+                                { required: true, message: 'Podaj tytuł quizu' },
+                                { min: 3, message: 'Min 3 znaki' },
+                                { max: 50, message: 'Max 50 znaków' }
+                            ]}
+                        >
+                            <Input placeholder="Np. Wiedza o Świecie 2024" size="large" />
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                        <Form.Item name="isPrivate" label="Widoczność" valuePropName="checked">
+                            <Switch checkedChildren="Prywatny" unCheckedChildren="Publiczny" />
+                        </Form.Item>
+                    </Col>
+                </Row>
 
-                        <Divider />
+                <Divider orientation="left" style={{ borderColor: '#d9d9d9' }}>Pytania</Divider>
 
-                        <Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'center' }}>
-                                <Typography variant="h5">Pytania ({questions.length}/{QUESTIONS_MAX})</Typography>
-                                <Button variant="outlined" startIcon={<AddCircleOutlineIcon />} onClick={addQuestion} disabled={questions.length >= QUESTIONS_MAX}>
-                                    Dodaj Pytanie
-                                </Button>
-                            </Box>
-
-                            <Stack spacing={3}>
-                                {questions.map((q, qIndex) => (
-                                    <Card key={q.id} variant="outlined" sx={{ position: 'relative', borderLeft: '4px solid #ed6c02' }}>
-                                        <CardContent>
-                                            
-                                            <Grid container spacing={2} sx={{ mb: 2 }}>
-                                                <Grid size={{ xs: 12, md: 8 }}>
-                                                    <TextField
-                                                        fullWidth
-                                                        label={`Pytanie #${qIndex + 1}`}
-                                                        value={q.title}
-                                                        onChange={(e) => updateQuestion(q.id, 'title', e.target.value)}
-                                                        required
-                                                        error={q.title.trim().length === 0}
-                                                        placeholder="Wpisz treść pytania..."
-                                                    />
-                                                </Grid>
-                                                <Grid size={{ xs: 12, md: 4 }}>
-                                                    <FormControl fullWidth>
-                                                        <InputLabel>Typ</InputLabel>
-                                                        <Select
-                                                            value={q.type}
-                                                            label="Typ"
-                                                            onChange={(e) => updateQuestion(q.id, 'type', e.target.value)}
-                                                        >
-                                                            <MenuItem value={QuestionType.SINGLE_CHOICE}>Jednokrotny wybór</MenuItem>
-                                                            <MenuItem value={QuestionType.MULTIPLE_CHOICE}>Wielokrotny wybór</MenuItem>
-                                                            <MenuItem value={QuestionType.TRUE_FALSE}>Prawda / Fałsz</MenuItem>
-                                                        </Select>
-                                                    </FormControl>
-                                                </Grid>
-                                            </Grid>
-
-                                            <Box sx={{ mb: 2 }}>
-                                                <TextField 
-                                                    label="Punkty za odpowiedź"
-                                                    type="number"
-                                                    size="small"
-                                                    value={q.points}
-                                                    onChange={(e) => updateQuestion(q.id, 'points', Number(e.target.value))}
-                                                    InputProps={{ 
-                                                        startAdornment: <InputAdornment position="start"><StarIcon fontSize="small"/></InputAdornment> 
+                <Form.List name="questions">
+                    {(fields, { add, remove }) => (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            
+                            <Collapse 
+                                accordion
+                                activeKey={activeKey}
+                                onChange={(key) => setActiveKey(key)}
+                                className="quiz-collapse"
+                                style={{ background: 'transparent', border: 'none' }}
+                            >
+                                {fields.map((field, index) => (
+                                    <Collapse.Panel
+                                        key={String(index)}
+                                        header={
+                                            <Space style={{ width: '100%' }}>
+                                                <SettingOutlined style={{ color: '#fa8c16' }} />
+                                                <Text strong>Pytanie #{index + 1}</Text>
+                                                
+                                                <Form.Item
+                                                    shouldUpdate={(prev, curr) => 
+                                                        prev.questions?.[index]?.title !== curr.questions?.[index]?.title
+                                                    }
+                                                    noStyle
+                                                >
+                                                    {({ getFieldValue }) => {
+                                                        const title = getFieldValue(['questions', index, 'title']);
+                                                        return title ? <Text type="secondary" style={{ fontWeight: 'normal', marginLeft: 8 }}>— {title}</Text> : null;
                                                     }}
-                                                    sx={{ width: 180 }}
-                                                    helperText="Max pkt (im szybciej, tym więcej)"
-                                                />
-                                            </Box>
+                                                </Form.Item>
+                                            </Space>
+                                        }
+                                        extra={genExtra(remove, field.name, fields.length)}
+                                        style={{ 
+                                            marginBottom: 12, 
+                                            background: '#fff', 
+                                            border: '1px solid #f0f0f0',
+                                            borderRadius: 8,
+                                            overflow: 'hidden'
+                                        }}
+                                    >
+                                        <div style={{ padding: '8px 0' }}>
+                                            <Row gutter={16}>
+                                                <Col xs={24} md={12}>
+                                                    <Form.Item
+                                                        {...field}
+                                                        name={[field.name, 'title']}
+                                                        label="Treść Pytania"
+                                                        rules={[{ required: true, message: 'Treść jest wymagana' }]}
+                                                    >
+                                                        <Input placeholder="Wpisz pytanie..." />
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col xs={12} md={6}>
+                                                    <Form.Item
+                                                        {...field}
+                                                        name={[field.name, 'type']}
+                                                        label="Typ Pytania"
+                                                        rules={[{ required: true }]}
+                                                    >
+                                                        <Select>
+                                                            <Option value={QuestionType.SINGLE_CHOICE}>Jednokrotny wybór</Option>
+                                                            <Option value={QuestionType.MULTIPLE_CHOICE}>Wielokrotny wybór</Option>
+                                                            <Option value={QuestionType.TRUE_FALSE}>Prawda / Fałsz</Option>
+                                                        </Select>
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col xs={12} md={6}>
+                                                    <Form.Item
+                                                        {...field}
+                                                        name={[field.name, 'points']}
+                                                        label="Punkty"
+                                                        initialValue={1000}
+                                                    >
+                                                        <InputNumber min={0} max={5000} style={{ width: '100%' }} />
+                                                    </Form.Item>
+                                                </Col>
+                                            </Row>
 
-                                            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                                                Odpowiedzi (Zaznacz poprawne):
-                                            </Typography>
+                                            <Text type="secondary" style={{ display: 'block', marginBottom: 12, fontSize: 13 }}>
+                                                Zaznacz <CheckCircleOutlined /> poprawne odpowiedzi:
+                                            </Text>
 
-                                            <Stack spacing={1}>
-                                                {q.options.map((opt, oIndex) => (
-                                                    <Stack key={oIndex} direction="row" spacing={1} alignItems="center">
-                                                        {q.type === QuestionType.MULTIPLE_CHOICE ? (
-                                                            <Checkbox checked={opt.isCorrect} onChange={() => handleCorrectChange(q.id, oIndex)} color="success" />
-                                                        ) : (
-                                                            <Radio checked={opt.isCorrect} onChange={() => handleCorrectChange(q.id, oIndex)} color="success" />
-                                                        )}
-                                                        
-                                                        <TextField 
-                                                            fullWidth size="small"
-                                                            value={opt.text}
-                                                            onChange={(e) => handleOptionTextChange(q.id, oIndex, e.target.value)}
-                                                            placeholder={`Opcja ${oIndex + 1}`}
-                                                            disabled={q.type === QuestionType.TRUE_FALSE}
-                                                        />
-                                                        
-                                                        {q.type !== QuestionType.TRUE_FALSE && (
-                                                            <IconButton size="small" color="error" onClick={() => removeOption(q.id, oIndex)} disabled={q.options.length <= 2}>
-                                                                <DeleteIcon fontSize="small" />
-                                                            </IconButton>
-                                                        )}
-                                                    </Stack>
-                                                ))}
-                                            </Stack>
+                                            <Form.List name={[field.name, 'options']}>
+                                                {(optFields, { add: addOpt, remove: removeOpt }) => (
+                                                    <>
+                                                        {optFields.map((optField, optIndex) => (
+                                                            <div key={optField.key} style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center' }}>
+                                                                <Tooltip title="Czy to poprawna odpowiedź?">
+                                                                    <Form.Item
+                                                                        {...optField}
+                                                                        name={[optField.name, 'isCorrect']}
+                                                                        valuePropName="checked"
+                                                                        noStyle
+                                                                    >
+                                                                        <Checkbox />
+                                                                    </Form.Item>
+                                                                </Tooltip>
 
-                                            {q.type !== QuestionType.TRUE_FALSE && q.options.length < CHOICES_MAX && (
-                                                <Button size="small" sx={{ mt: 1, ml: 4 }} startIcon={<AddCircleOutlineIcon />} onClick={() => addOption(q.id)}>
-                                                    Dodaj Opcję
-                                                </Button>
-                                            )}
-                                        </CardContent>
+                                                                <Form.Item
+                                                                    {...optField}
+                                                                    name={[optField.name, 'text']}
+                                                                    rules={[{ required: true, message: 'Wpisz odpowiedź' }]}
+                                                                    style={{ flex: 1, margin: 0 }}
+                                                                >
+                                                                    <Input placeholder={`Opcja ${optIndex + 1}`} />
+                                                                </Form.Item>
 
-                                        {questions.length > 1 && (
-                                            <IconButton onClick={() => removeQuestion(q.id)} sx={{ position: 'absolute', top: 5, right: 5 }} color="error">
-                                                <DeleteIcon />
-                                            </IconButton>
-                                        )}
-                                    </Card>
+                                                                <Form.Item shouldUpdate noStyle>
+                                                                    {({ getFieldValue }) => {
+                                                                        const type = getFieldValue(['questions', index, 'type']);
+                                                                        if (type === QuestionType.TRUE_FALSE) return null;
+                                                                        
+                                                                        return optFields.length > 2 ? (
+                                                                            <MinusCircleOutlined 
+                                                                                onClick={() => removeOpt(optField.name)}
+                                                                                style={{ color: '#ff4d4f', cursor: 'pointer', fontSize: 16 }}
+                                                                            />
+                                                                        ) : <div style={{ width: 16 }} />;
+                                                                    }}
+                                                                </Form.Item>
+                                                            </div>
+                                                        ))}
+
+                                                        <Form.Item shouldUpdate noStyle>
+                                                            {({ getFieldValue }) => {
+                                                                const currentQ = getFieldValue(['questions', index]);
+                                                                const isTF = currentQ?.type === QuestionType.TRUE_FALSE;
+                                                                const count = currentQ?.options?.length || 0;
+
+                                                                if (!isTF && count < 6) {
+                                                                    return (
+                                                                        <Button 
+                                                                            type="dashed" 
+                                                                            onClick={() => addOpt(DEFAULT_OPTION)} 
+                                                                            block 
+                                                                            icon={<PlusOutlined />}
+                                                                            size="small"
+                                                                            style={{ marginTop: 8, maxWidth: 200 }}
+                                                                        >
+                                                                            Dodaj Opcję
+                                                                        </Button>
+                                                                    );
+                                                                }
+                                                                return null;
+                                                            }}
+                                                        </Form.Item>
+                                                    </>
+                                                )}
+                                            </Form.List>
+                                        </div>
+                                    </Collapse.Panel>
                                 ))}
-                            </Stack>
-                        </Box>
+                            </Collapse>
 
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 2 }}>
-                            <Button variant="outlined" onClick={onCancel} startIcon={<ArrowBackIcon />}>
-                                Anuluj
+                            <Button 
+                                type="dashed" 
+                                onClick={() => {
+                                    add(DEFAULT_QUESTION);
+                                    setActiveKey(String(fields.length)); 
+                                }} 
+                                block 
+                                size="large"
+                                icon={<PlusOutlined />}
+                                disabled={fields.length >= 50}
+                                style={{ height: 50 }}
+                            >
+                                Dodaj Nowe Pytanie
                             </Button>
-                            <Button type="submit" variant="contained" disabled={!isFormValid} startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}>
-                                {isSubmitting ? 'Zapisywanie...' : 'Zapisz Quiz'}
-                            </Button>
-                        </Box>
-                    </Stack>
-                </form>
-            </CardContent>
+                        </div>
+                    )}
+                </Form.List>
+
+                <Divider />
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 16 }}>
+                    <Button onClick={onCancel} icon={<ArrowLeftOutlined />} size="large">
+                        Anuluj
+                    </Button>
+                    <Button 
+                        type="primary" 
+                        htmlType="submit" 
+                        loading={isSubmitting} 
+                        icon={<SaveOutlined />}
+                        size="large"
+                        style={{ backgroundColor: '#fa8c16', borderColor: '#fa8c16' }}
+                    >
+                        Stwórz Quiz
+                    </Button>
+                </div>
+            </Form>
         </Card>
     );
 };

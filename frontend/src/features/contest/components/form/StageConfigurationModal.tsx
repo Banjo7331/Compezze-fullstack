@@ -3,7 +3,7 @@ import { Modal, Form, Input, Select, InputNumber, Divider, Row, Col, Typography,
 import { useDebounce } from '@/shared/hooks/useDebounce'; 
 import { quizService } from '@/features/quiz/api/quizService';
 import { surveyService } from '@/features/survey/api/surveyService';
-import type { StageType, JuryRevealMode } from '../model/types';
+import type { StageType, JuryRevealMode } from '../../model/types';
 
 const { Option } = Select;
 

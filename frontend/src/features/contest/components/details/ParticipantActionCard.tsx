@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Button, Typography, Alert, Modal, Result, Popconfirm, theme } from 'antd';
 import { CloudUploadOutlined, PlayCircleOutlined, DeleteOutlined } from '@ant-design/icons';
-import { ContestSubmissionForm } from './ContestSubmissionForm';
+import { ContestSubmissionForm } from '../ContestSubmissionForm';
 import { contestService } from '@/features/contest/api/contestService';
 import { useSnackbar } from '@/app/providers/SnackbarProvider';
 

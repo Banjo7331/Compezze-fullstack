@@ -6,11 +6,11 @@ import { contestService } from '@/features/contest/api/contestService';
 import type { ContestDetailsDto } from '@/features/contest/model/types';
 import { useSnackbar } from '@/app/providers/SnackbarProvider';
 
-import { ContestHeader } from '@/features/contest/components/ContestHeader';
-import { ContestStagesStepper } from '@/features/contest/components/ContestStagesStepper';
-import { StaffActionCard } from '@/features/contest/components/StaffActionCard';
-import { ParticipantActionCard } from '@/features/contest/components/ParticipantActionCard';
-import { GuestActionCard } from '@/features/contest/components/GuestActionCard';
+import { ContestHeader } from '@/features/contest/components/details/ContestHeader';
+import { ContestStagesStepper } from '@/features/contest/components/details/ContestStagesStepper';
+import { StaffActionCard } from '@/features/contest/components/details/StaffActionCard';
+import { ParticipantActionCard } from '@/features/contest/components/details/ParticipantActionCard';
+import { GuestActionCard } from '@/features/contest/components/details/GuestActionCard';
 
 const ContestDetailsPage: React.FC = () => {
   const { contestId } = useParams<{ contestId: string }>();

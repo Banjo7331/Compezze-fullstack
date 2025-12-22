@@ -1,13 +1,20 @@
 import React from 'react';
 import { 
-    Dialog, DialogTitle, DialogContent, DialogActions, Button, 
-    Typography, Chip, Stack, Box, Divider, Alert 
-} from '@mui/material';
-import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
-import GavelIcon from '@mui/icons-material/Gavel';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+    Modal, Button, Typography, Tag, Divider, 
+    Space, Card, Popconfirm, Empty, Alert 
+} from 'antd';
+import { 
+    SafetyCertificateOutlined,
+    AuditOutlined,
+    TrophyOutlined,
+    DeleteOutlined,
+    CheckCircleOutlined,
+    CloseCircleOutlined,
+    ClockCircleOutlined
+} from '@ant-design/icons';
 import type { ContestParticipantDto, ContestRole } from '../model/types';
+
+const { Text, Title } = Typography;
 
 interface Props {
     open: boolean;
@@ -18,102 +25,134 @@ interface Props {
     isProcessing: boolean;
 }
 
-const ROLES_CONFIG: { role: ContestRole, label: string, icon: React.ReactElement, color: "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" }[] = [
-    { role: 'MODERATOR', label: 'Moderator', icon: <VerifiedUserIcon />, color: 'secondary' },
-    { role: 'JURY', label: 'Jury (Sędzia)', icon: <GavelIcon />, color: 'warning' },
-    { role: 'COMPETITOR', label: 'Zawodnik', icon: <EmojiEventsIcon />, color: 'info' }, 
+const ROLES_CONFIG: { 
+    role: ContestRole, 
+    label: string, 
+    icon: React.ReactElement, 
+    color: string 
+}[] = [
+    { role: 'MODERATOR', label: 'Moderator', icon: <SafetyCertificateOutlined />, color: 'purple' },
+    { role: 'JURY', label: 'Jury', icon: <AuditOutlined />, color: 'gold' },
+    { role: 'COMPETITOR', label: 'Competitor', icon: <TrophyOutlined />, color: 'cyan' }, 
 ];
 
 export const ContestParticipantManagerDialog: React.FC<Props> = ({ 
     open, onClose, participant, onToggleRole, onDeleteSubmission, isProcessing 
 }) => {
+    
     if (!participant) return null;
 
+    const renderSubmissionStatus = (status: string) => {
+        let color = 'default';
+        let icon = <ClockCircleOutlined />;
+        
+        if (status === 'APPROVED') { color = 'success'; icon = <CheckCircleOutlined />; }
+        if (status === 'REJECTED') { color = 'error'; icon = <CloseCircleOutlined />; }
+
+        return <Tag icon={icon} color={color}>{status}</Tag>;
+    };
+
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-            <DialogTitle sx={{ bgcolor: '#f5f5f5', borderBottom: '1px solid #ddd' }}>
-                Zarządzaj Uczestnikiem
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    {participant.displayName}
-                </Typography>
-            </DialogTitle>
-            
-            <DialogContent sx={{ mt: 2 }}>
-                
-                <Typography variant="overline" display="block" gutterBottom color="text.secondary">
-                    ROLE I UPRAWNIENIA
-                </Typography>
-                
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
-                    {ROLES_CONFIG.map((config) => {
-                        const hasRole = participant.roles.includes(config.role);
-                        const isCompetitor = config.role === 'COMPETITOR';
+        <Modal
+            title={
+                <div>
+                    Manage Participant
+                    <div style={{ fontWeight: 'normal', fontSize: '14px', color: '#888' }}>
+                        {participant.displayName}
+                    </div>
+                </div>
+            }
+            open={open}
+            onCancel={onClose}
+            footer={[
+                <Button key="close" onClick={onClose}>Close</Button>
+            ]}
+            width={400}
+            centered
+        >
+            <Divider orientation="left" style={{ margin: '12px 0' }}>
+                <Text type="secondary" style={{ fontSize: '12px' }}>ROLES & PERMISSIONS</Text>
+            </Divider>
 
-                        return (
-                            <Chip 
-                                key={config.role}
-                                icon={config.icon}
-                                label={config.label}
-                                color={hasRole ? config.color : 'default'}
-                                variant={hasRole ? 'filled' : 'outlined'}
-                                onClick={() => !isCompetitor && onToggleRole(config.role, hasRole)}
-                                sx={{ 
-                                    opacity: hasRole ? 1 : 0.6,
-                                    cursor: isCompetitor ? 'default' : 'pointer',
-                                    fontWeight: hasRole ? 'bold' : 'normal'
-                                }}
-                            />
-                        );
-                    })}
-                </Box>
+            <Space size={[8, 8]} wrap style={{ width: '100%', marginBottom: 16 }}>
+                {ROLES_CONFIG.map((config) => {
+                    const hasRole = participant.roles.includes(config.role);
+                    const isCompetitor = config.role === 'COMPETITOR';
 
-                <Divider sx={{ my: 2 }} />
-
-                <Typography variant="overline" display="block" gutterBottom color="text.secondary">
-                    ZGŁOSZENIE KONKURSOWE
-                </Typography>
-
-                {participant.submissionId ? (
-                    <Box sx={{ p: 2, border: '1px solid #eee', borderRadius: 2, bgcolor: '#fafafa' }}>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
-                            <Typography variant="body2" fontWeight="bold">Status:</Typography>
-                            <Chip 
-                                label={participant.submissionStatus} 
-                                size="small" 
-                                color={participant.submissionStatus === 'APPROVED' ? 'success' : participant.submissionStatus === 'REJECTED' ? 'error' : 'default'} 
-                            />
-                        </Stack>
-                        
-                        <Typography variant="caption" color="text.secondary" display="block" mb={2}>
-                            ID: {participant.submissionId}
-                        </Typography>
-                        
-                        <Button 
-                            variant="outlined" 
-                            color="error" 
-                            size="small" 
-                            startIcon={<DeleteIcon />}
-                            fullWidth
-                            onClick={() => {
-                                if(window.confirm("Czy na pewno usunąć (odrzucić) zgłoszenie? Użytkownik straci rolę ZAWODNIKA.")) {
-                                    onDeleteSubmission(participant.submissionId!);
-                                }
+                    return (
+                        <Tag.CheckableTag
+                            key={config.role}
+                            checked={hasRole}
+                            onChange={() => !isCompetitor && onToggleRole(config.role, hasRole)}
+                            style={{ 
+                                cursor: isCompetitor ? 'not-allowed' : 'pointer',
+                                padding: '4px 12px',
+                                fontSize: '14px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                border: hasRole ? `1px solid transparent` : '1px solid #d9d9d9',
+                                background: hasRole ? undefined : '#fafafa',
                             }}
-                            disabled={isProcessing}
                         >
-                            Usuń Zgłoszenie
-                        </Button>
-                    </Box>
-                ) : (
-                    <Alert severity="info" icon={false} sx={{ py: 0 }}>
-                        Użytkownik nie przesłał jeszcze zgłoszenia.
-                    </Alert>
-                )}
+                            {config.icon}
+                            {config.label}
+                        </Tag.CheckableTag>
+                    );
+                })}
+            </Space>
 
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose} color="inherit">Zamknij</Button>
-            </DialogActions>
-        </Dialog>
+            <Divider orientation="left" style={{ margin: '12px 0' }}>
+                 <Text type="secondary" style={{ fontSize: '12px' }}>CONTEST SUBMISSION</Text>
+            </Divider>
+
+            {participant.submissionId ? (
+                <Card 
+                    size="small" 
+                    type="inner" 
+                    bordered={true}
+                    style={{ background: '#fafafa' }}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                        <Text strong>Status:</Text>
+                        {renderSubmissionStatus(participant.submissionStatus || 'PENDING')}
+                    </div>
+                    
+                    <div style={{ marginBottom: 16 }}>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>Submission ID: {participant.submissionId}</Text>
+                    </div>
+
+                    <Popconfirm
+                        title="Reject & Delete Submission"
+                        description={
+                            <div style={{ maxWidth: 250 }}>
+                                Are you sure? This will remove the submission permanently and revoke the <b>Competitor</b> role.
+                            </div>
+                        }
+                        onConfirm={() => onDeleteSubmission(participant.submissionId!)}
+                        okText="Yes, Delete"
+                        okButtonProps={{ danger: true, loading: isProcessing }}
+                        cancelText="Cancel"
+                        disabled={isProcessing}
+                    >
+                        <Button 
+                            danger 
+                            block 
+                            icon={<DeleteOutlined />}
+                            loading={isProcessing}
+                        >
+                            Reject & Delete Submission
+                        </Button>
+                    </Popconfirm>
+                </Card>
+            ) : (
+                <Alert 
+                    message="No Submission" 
+                    description="This user has not submitted an entry yet." 
+                    type="info" 
+                    showIcon 
+                />
+            )}
+        </Modal>
     );
 };

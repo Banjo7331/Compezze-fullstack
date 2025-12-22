@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
+import { Modal, Typography, Spin, Alert, Divider, Tag, Space, Button } from 'antd';
 import { 
-    Dialog, DialogTitle, DialogContent, IconButton, Typography, 
-    Box, CircularProgress, Alert, Divider, Chip
-} from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import PersonIcon from '@mui/icons-material/Person';
+    CalendarOutlined, 
+    UserOutlined, 
+    TrophyOutlined 
+} from '@ant-design/icons';
 
 import { quizService } from '../api/quizService';
 import type { GetQuizRoomDetailsResponse } from '../model/types';
 import { QuizLeaderboardTable } from './QuizLeadboardTable';
+
+const { Title, Text } = Typography;
 
 interface QuizHistoryDialogProps {
     roomId: string | null;
@@ -31,7 +32,7 @@ export const QuizHistoryDialog: React.FC<QuizHistoryDialogProps> = ({ roomId, op
                     const details = await quizService.getRoomDetails(roomId);
                     setData(details);
                 } catch (err) {
-                    setError("Nie udało się pobrać rankingu.");
+                    setError("Failed to load leaderboard data.");
                 } finally {
                     setIsLoading(false);
                 }
@@ -41,46 +42,58 @@ export const QuizHistoryDialog: React.FC<QuizHistoryDialogProps> = ({ roomId, op
     }, [open, roomId]);
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth scroll="paper">
-            <DialogTitle 
-                component="div" 
-                sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#fff3e0' }}
-            >
-                <Typography variant="h6" component="h2" fontWeight="bold">
-                    Wyniki Quizu
-                </Typography>
-                
-                <IconButton aria-label="close" onClick={onClose}>
-                    <CloseIcon />
-                </IconButton>
-            </DialogTitle>
-            
-            <DialogContent dividers>
-                {isLoading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>
-                ) : error ? (
-                    <Alert severity="error">{error}</Alert>
-                ) : data ? (
-                    <Box>
-                        <Box sx={{ textAlign: 'center', mb: 3 }}>
-                            <Typography variant="h5" gutterBottom>{data.quizTitle}</Typography>
-                            
-                            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mb: 2 }}>
-                                <Chip icon={<PersonIcon />} label={`${data.currentParticipants} graczy`} size="small" />
-                                <Chip icon={<CalendarTodayIcon />} label={data.status === 'FINISHED' ? 'Zakończony' : 'W trakcie'} color={data.status === 'FINISHED' ? 'default' : 'success'} size="small" />
-                            </Box>
-                        </Box>
+        <Modal
+            title={
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <TrophyOutlined style={{ color: '#fa8c16' }} />
+                    <span>Quiz Results</span>
+                </div>
+            }
+            open={open}
+            onCancel={onClose}
+            footer={[
+                <Button key="close" onClick={onClose}>Close</Button>
+            ]}
+            width={600}
+            centered
+        >
+            {isLoading ? (
+                <div style={{ textAlign: 'center', padding: 40 }}>
+                    <Spin size="large" />
+                </div>
+            ) : error ? (
+                <Alert message="Error" description={error} type="error" showIcon />
+            ) : data ? (
+                <div>
+                    <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                        <Title level={4} style={{ margin: 0, marginBottom: 8 }}>{data.quizTitle}</Title>
+                        
+                        <Space>
+                            <Tag icon={<UserOutlined />}>
+                                {data.currentParticipants} players
+                            </Tag>
+                            <Tag 
+                                icon={<CalendarOutlined />} 
+                                color={data.status === 'FINISHED' ? 'default' : 'green'}
+                            >
+                                {data.status === 'FINISHED' ? 'Finished' : 'Active'}
+                            </Tag>
+                        </Space>
+                    </div>
 
-                        <Divider>🏆 TOP 5 🏆</Divider>
+                    <Divider orientation="left" style={{ fontSize: 14 }}>
+                        <TrophyOutlined /> TOP 5 LEADERBOARD
+                    </Divider>
 
-                        <QuizLeaderboardTable
-                            leaderboard={data.currentResults?.leaderboard || []} 
-                        />
-                    </Box>
-                ) : (
-                    <Typography sx={{ p: 2 }}>Brak danych.</Typography>
-                )}
-            </DialogContent>
-        </Dialog>
+                    <QuizLeaderboardTable
+                        leaderboard={data.currentResults?.leaderboard || []} 
+                    />
+                </div>
+            ) : (
+                <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>
+                    No data available.
+                </div>
+            )}
+        </Modal>
     );
 };

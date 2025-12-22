@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { 
-    Box, Typography, Paper, Button, CircularProgress, Stack, Pagination, Chip, Alert, 
-    TextField, InputAdornment 
-} from '@mui/material';
-import PersonIcon from '@mui/icons-material/Person';
-import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
-import MeetingRoomIcon from '@mui/icons-material/MeetingRoom';
-import SearchIcon from '@mui/icons-material/Search'; // ✅
+    List, Button, Pagination, Input, Tag, Card, Typography, 
+    Space, Alert, Empty, Spin 
+} from 'antd';
+import { 
+    SearchOutlined, 
+    UserOutlined, 
+    TrophyOutlined, 
+    LoginOutlined,
+    ClockCircleOutlined 
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
 import { quizService } from '../api/quizService';
-import { useDebounce } from '@/shared/hooks/useDebounce'; // ✅
+import { useDebounce } from '@/shared/hooks/useDebounce';
 import type { GetActiveQuizRoomResponse } from '../model/types';
+
+const { Text, Title } = Typography;
 
 export const QuizActiveRoomsList: React.FC = () => {
     const navigate = useNavigate();
@@ -20,10 +25,9 @@ export const QuizActiveRoomsList: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     
-    const [page, setPage] = useState(0);
-    const [totalPages, setTotalPages] = useState(0);
+    const [page, setPage] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
 
-    // ✅ NOWE STANY: Wyszukiwarka
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebounce(search, 500);
 
@@ -32,122 +36,108 @@ export const QuizActiveRoomsList: React.FC = () => {
             setIsLoading(true);
             try {
                 const data = await quizService.getActiveRooms({ 
-                    page, 
+                    page: page - 1, 
                     size: 10, 
                     sort: 'createdAt,desc',
-                    search: debouncedSearch // ✅ Przekazujemy parametr
+                    search: debouncedSearch 
                 });
                 setRooms(data.content);
-                setTotalPages(data.totalPages);
+                setTotalItems(data.totalElements);
                 setError(null);
             } catch (err) {
                 console.error(err);
-                setError("Nie udało się pobrać listy aktywnych gier.");
+                setError("Failed to fetch active games.");
             } finally {
                 setIsLoading(false);
             }
         };
 
         fetchRooms();
-    }, [page, debouncedSearch]); // ✅ Odświeżamy przy zmianie searcha
+    }, [page, debouncedSearch]);
 
-    // Reset strony po wyszukaniu
-    useEffect(() => { setPage(0); }, [debouncedSearch]);
+    useEffect(() => { setPage(1); }, [debouncedSearch]);
 
-    const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
-        setPage(value - 1);
+    const handlePageChange = (newPage: number) => {
+        setPage(newPage);
     };
 
     return (
-        <Box>
-            {/* ✅ SEKCJA WYSZUKIWANIA */}
-            <Box mb={3}>
-                <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Szukaj gry po nazwie quizu..."
+        <div>
+            <div style={{ marginBottom: 24 }}>
+                <Input
+                    size="large"
+                    placeholder="Search active games by title..."
+                    prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <SearchIcon color="action" />
-                            </InputAdornment>
-                        ),
-                    }}
-                    sx={{ bgcolor: 'white', borderRadius: 1 }}
+                    allowClear
                 />
-            </Box>
+            </div>
 
-            {isLoading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}><CircularProgress /></Box>
-            ) : error ? (
-                <Alert severity="error">{error}</Alert>
-            ) : rooms.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 4 }}>
-                    <MeetingRoomIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
-                    <Typography color="text.secondary">
-                        {search ? "Nie znaleziono gier o tej nazwie." : "Brak aktywnych gier w tym momencie."}
-                    </Typography>
-                </Box>
-            ) : (
-                <Stack spacing={2}>
-                    {rooms.map((room) => (
-                        <Paper 
-                            key={room.roomId} 
-                            elevation={2} 
-                            sx={{ 
-                                p: 2, 
-                                borderLeft: '6px solid #ed6c02',
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                alignItems: 'center' 
-                            }}
-                        >
-                            <Box>
-                                <Typography variant="h6" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <SportsEsportsIcon fontSize="small" color="warning" />
-                                    {room.quizTitle}
-                                </Typography>
-                                
-                                <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
-                                    <Chip 
-                                        label={room.status === 'LOBBY' ? "W POCZEKALNI" : "GRA TRWA"} 
-                                        color={room.status === 'LOBBY' ? "success" : "warning"} 
-                                        size="small" 
-                                        variant="outlined"
-                                    />
-                                    <Chip 
-                                        icon={<PersonIcon />} 
-                                        label={`${room.participantsCount} / ${room.maxParticipants || '∞'}`} 
-                                        size="small" 
-                                        variant="outlined" 
-                                    />
-                                </Stack>
-                            </Box>
+            {error && (
+                <Alert message="Error" description={error} type="error" showIcon style={{ marginBottom: 24 }} />
+            )}
+
+            <List
+                loading={isLoading}
+                itemLayout="horizontal"
+                dataSource={rooms}
+                locale={{
+                    emptyText: (
+                        <Empty 
+                            image={Empty.PRESENTED_IMAGE_SIMPLE} 
+                            description={search ? "No games found matching query." : "No active games at the moment."} 
+                        />
+                    )
+                }}
+                renderItem={(room) => (
+                    <Card 
+                        hoverable
+                        style={{ marginBottom: 16, borderLeft: '4px solid #fa8c16' }}
+                        bodyStyle={{ padding: '16px 24px' }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
                             
+                            <div style={{ flex: 1, minWidth: 200 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                    <TrophyOutlined style={{ color: '#fa8c16', fontSize: 18 }} />
+                                    <Text strong style={{ fontSize: 16 }}>{room.quizTitle}</Text>
+                                </div>
+                                
+                                <Space wrap>
+                                    <Tag color={room.status === 'LOBBY' ? 'success' : 'warning'} icon={room.status === 'LOBBY' ? <ClockCircleOutlined /> : null}>
+                                        {room.status === 'LOBBY' ? "IN LOBBY" : "GAME IN PROGRESS"}
+                                    </Tag>
+                                    <Tag icon={<UserOutlined />}>
+                                        {room.participantsCount} / {room.maxParticipants || '∞'}
+                                    </Tag>
+                                </Space>
+                            </div>
+
                             <Button 
-                                variant="contained" 
-                                color="warning"
+                                type="primary" 
+                                style={{ backgroundColor: '#fa8c16', borderColor: '#fa8c16' }}
+                                icon={<LoginOutlined />}
                                 onClick={() => navigate(`/quiz/join/${room.roomId}`)}
                             >
-                                DOŁĄCZ
+                                JOIN
                             </Button>
-                        </Paper>
-                    ))}
-                </Stack>
-            )}
+                        </div>
+                    </Card>
+                )}
+            />
 
-            {totalPages > 1 && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+            {totalItems > 10 && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 24 }}>
                     <Pagination 
-                        count={totalPages} 
-                        page={page + 1} 
+                        current={page} 
+                        total={totalItems} 
+                        pageSize={10}
                         onChange={handlePageChange} 
-                        color="primary"
+                        showSizeChanger={false}
                     />
-                </Box>
+                </div>
             )}
-        </Box>
+        </div>
     );
 };

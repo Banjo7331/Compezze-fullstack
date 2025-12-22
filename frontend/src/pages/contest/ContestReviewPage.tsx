@@ -1,45 +1,43 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-    Container, Grid, Card, CardContent, CardMedia, Typography, 
-    Stack, TextField, Button, Box, CircularProgress, Alert,
-    Dialog, DialogContent, IconButton, DialogTitle
-} from '@mui/material';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined';
-import CloseIcon from '@mui/icons-material/Close';
+    Button, Typography, Tabs, Row, Col, Modal, Spin, Empty, message 
+} from 'antd';
+import { 
+    ClockCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, ArrowLeftOutlined 
+} from '@ant-design/icons';
 
 import { contestService } from '@/features/contest/api/contestService';
 import type { SubmissionDto } from '@/features/contest/model/types';
-import { useSnackbar } from '@/app/providers/SnackbarProvider';
+
+import { ReviewSubmissionCard } from '@/features/contest/components/ReviewSubmissionCard';
+
+const { Title } = Typography;
+
+type TabStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 const ContestReviewPage: React.FC = () => {
     const { contestId } = useParams<{ contestId: string }>();
     const navigate = useNavigate();
-    const { showSuccess, showError } = useSnackbar();
+    const [messageApi, contextHolder] = message.useMessage();
 
+    const [activeStatus, setActiveStatus] = useState<TabStatus>('PENDING');
     const [submissions, setSubmissions] = useState<SubmissionDto[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [comments, setComments] = useState<Record<string, string>>({});
 
     const [previewOpen, setPreviewOpen] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-    const [previewType, setPreviewType] = useState<'image' | 'video' | null>(null);
     const [previewTitle, setPreviewTitle] = useState('');
 
-    const fetchSubmissions = async () => {
+    const fetchSubmissions = async (status: TabStatus) => {
+        setIsLoading(true);
         try {
-            const response: any = await contestService.getSubmissionsForReview(contestId!, 'PENDING');
-            const list = Array.isArray(response) 
-                ? response 
-                : (response?.content || []);
-            
+            const response: any = await contestService.getSubmissionsForReview(contestId!, status);
+            const list = Array.isArray(response) ? response : (response?.content || []);
             setSubmissions(list);
         } catch (e) {
             console.error(e);
-            showError("Nie udało się pobrać zgłoszeń.");
+            messageApi.error("Failed to load submissions.");
             setSubmissions([]);
         } finally {
             setIsLoading(false);
@@ -47,131 +45,112 @@ const ContestReviewPage: React.FC = () => {
     };
 
     useEffect(() => {
-        if (contestId) fetchSubmissions();
-    }, [contestId]);
+        if (contestId) fetchSubmissions(activeStatus);
+    }, [contestId, activeStatus]);
 
-    const handleReview = async (subId: string, action: 'APPROVED' | 'REJECTED') => {
-        const comment = comments[subId] || "";
+    const handleReview = async (subId: string, action: 'APPROVED' | 'REJECTED', comment: string) => {
         if (action === 'REJECTED' && !comment.trim()) {
-            showError("Przy odrzuceniu wymagany jest komentarz.");
+            messageApi.warning("Comment is required when rejecting.");
             return;
         }
+
         try {
             await contestService.reviewSubmission(contestId!, subId, action, comment);
-            showSuccess(`Zgłoszenie ${action === 'APPROVED' ? 'zatwierdzone' : 'odrzucone'}.`);
+            messageApi.success(`Submission ${action.toLowerCase()}.`);
+            
             setSubmissions(prev => prev.filter(s => s.id !== subId));
         } catch (e) {
-            showError("Błąd wysyłania decyzji.");
+            messageApi.error("Failed to submit review.");
         }
     };
 
-    const handleOpenPreview = (sub: SubmissionDto) => {
-        if (!sub.mediaUrl) {
-            showError("Brak pliku dla tego zgłoszenia.");
-            return;
-        }
-
-        const url = sub.mediaUrl;
-        const isVideo = url.includes('.mp4') || url.includes('.mov') || url.includes('.webm');
-        
+    const handleOpenPreview = (url: string, title: string) => {
         setPreviewUrl(url);
-        setPreviewType(isVideo ? 'video' : 'image');
-        setPreviewTitle(sub.participantName);
+        setPreviewTitle(title);
         setPreviewOpen(true);
     };
 
-    const handleClosePreview = () => {
-        setPreviewOpen(false);
-        setPreviewUrl(null);
-    };
-
-    if (isLoading) return <CircularProgress sx={{ display: 'block', mx: 'auto', mt: 10 }} />;
+    const tabItems = [
+        { key: 'PENDING', label: 'To Review', icon: <ClockCircleOutlined /> },
+        { key: 'APPROVED', label: 'Approved', icon: <CheckCircleOutlined /> },
+        { key: 'REJECTED', label: 'Rejected', icon: <CloseCircleOutlined /> },
+    ];
 
     return (
-        <Container maxWidth="lg" sx={{ py: 4 }}>
-            <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} sx={{ mb: 2 }}>
-                Wróć do Konkursu
-            </Button>
+        <div style={{ padding: '24px', maxWidth: 1200, margin: '0 auto' }}>
+            {contextHolder}
             
-            <Typography variant="h4" gutterBottom fontWeight="bold">
-                Weryfikacja Zgłoszeń ({submissions.length})
-            </Typography>
+            <div style={{ marginBottom: 24 }}>
+                <Button 
+                    icon={<ArrowLeftOutlined />} 
+                    onClick={() => navigate(-1)} 
+                    style={{ marginBottom: 16 }}
+                >
+                    Back to Contest
+                </Button>
+                <Title level={2} style={{ margin: 0 }}>Submission Review</Title>
+            </div>
 
-            {submissions.length === 0 ? (
-                <Alert severity="success" sx={{ mt: 4, py: 3 }}>
-                    <Typography variant="h6">Brak zgłoszeń oczekujących.</Typography>
-                    Wszystkie prace zostały zweryfikowane lub nikt jeszcze nic nie wysłał.
-                </Alert>
+            <Tabs 
+                activeKey={activeStatus} 
+                onChange={(key) => setActiveStatus(key as TabStatus)}
+                items={tabItems}
+                destroyInactiveTabPane
+                style={{ marginBottom: 24 }}
+            />
+
+            {isLoading ? (
+                <div style={{ textAlign: 'center', padding: 50 }}>
+                    <Spin size="large" tip="Loading..." />
+                </div>
+            ) : submissions.length === 0 ? (
+                <Empty description={`No ${activeStatus.toLowerCase()} submissions found.`} />
             ) : (
-                <Grid container spacing={3}>
+                <Row gutter={[24, 24]}>
                     {submissions.map((sub) => (
-                        <Grid item xs={12} md={6} lg={4} key={sub.id}>
-                            <Card elevation={4} sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                                
-                                <Box 
-                                    sx={{ 
-                                        height: 200, 
-                                        bgcolor: '#eee', 
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        position: 'relative', cursor: 'pointer',
-                                        '&:hover .play-btn': { transform: 'scale(1.1)' },
-                                        // Opcjonalnie: pokaż miniaturkę od razu, jeśli to obrazek
-                                        backgroundImage: (sub.mediaUrl && !sub.mediaUrl.includes('.mp4')) ? `url(${sub.mediaUrl})` : 'none',
-                                        backgroundSize: 'cover',
-                                        backgroundPosition: 'center'
-                                    }}
-                                    onClick={() => handleOpenPreview(sub)}
-                                >
-                                    <Box className="play-btn" sx={{ transition: '0.2s', textAlign: 'center', bgcolor: 'rgba(255,255,255,0.7)', borderRadius: '50%', p: 1 }}>
-                                        <PlayCircleOutlinedIcon sx={{ fontSize: 50, color: 'primary.main' }} />
-                                    </Box>
-                                </Box>
-
-                                <CardContent sx={{ flexGrow: 1 }}>
-                                    <Typography variant="h6" gutterBottom>{sub.participantName}</Typography>
-                                    <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                                        Data: {new Date(sub.createdAt).toLocaleString()}
-                                    </Typography>
-                                    
-                                    <TextField 
-                                        label="Komentarz"
-                                        fullWidth multiline rows={2} size="small" variant="outlined"
-                                        sx={{ mt: 2, mb: 2 }}
-                                        value={comments[sub.id] || ''}
-                                        onChange={(e) => setComments({ ...comments, [sub.id]: e.target.value })}
-                                    />
-
-                                    <Stack direction="row" spacing={1} mt="auto">
-                                        <Button fullWidth variant="contained" color="success" startIcon={<CheckCircleIcon />} onClick={() => handleReview(sub.id, 'APPROVED')}>
-                                            Akceptuj
-                                        </Button>
-                                        <Button fullWidth variant="outlined" color="error" startIcon={<CancelIcon />} onClick={() => handleReview(sub.id, 'REJECTED')}>
-                                            Odrzuć
-                                        </Button>
-                                    </Stack>
-                                </CardContent>
-                            </Card>
-                        </Grid>
+                        <Col xs={24} md={12} lg={8} key={sub.id}>
+                            <ReviewSubmissionCard 
+                                submission={sub}
+                                statusTab={activeStatus}
+                                onApprove={(id, comm) => handleReview(id, 'APPROVED', comm)}
+                                onReject={(id, comm) => handleReview(id, 'REJECTED', comm)}
+                                onPreview={handleOpenPreview}
+                            />
+                        </Col>
                     ))}
-                </Grid>
+                </Row>
             )}
 
-            <Dialog open={previewOpen} onClose={handleClosePreview} maxWidth="md" fullWidth PaperProps={{ sx: { bgcolor: 'black', color: 'white' } }}>
-                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', p: 1 }}>
-                    <Typography variant="subtitle1">{previewTitle}</Typography>
-                    <IconButton onClick={handleClosePreview} sx={{ color: 'white' }}><CloseIcon /></IconButton>
-                </DialogTitle>
-                <DialogContent sx={{ p: 0, display: 'flex', justifyContent: 'center', minHeight: 300 }}>
-                    {previewUrl && (
-                        previewType === 'video' ? (
-                            <video src={previewUrl} controls autoPlay style={{ maxWidth: '100%', maxHeight: '80vh' }} />
-                        ) : (
-                            <img src={previewUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }} />
-                        )
-                    )}
-                </DialogContent>
-            </Dialog>
-        </Container>
+            <Modal
+                open={previewOpen}
+                title={`Submission by ${previewTitle}`}
+                footer={null}
+                onCancel={() => {
+                    setPreviewOpen(false);
+                    setPreviewUrl(null);
+                }}
+                width={900}
+                centered
+                bodyStyle={{ padding: 0, background: '#000', minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+                {previewUrl && (
+                    previewUrl.match(/\.(mp4|mov|webm)$/i) ? (
+                        <video 
+                            src={previewUrl} 
+                            controls 
+                            autoPlay 
+                            style={{ maxWidth: '100%', maxHeight: '80vh' }} 
+                        />
+                    ) : (
+                        <img 
+                            src={previewUrl} 
+                            alt="Preview" 
+                            style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }} 
+                        />
+                    )
+                )}
+            </Modal>
+        </div>
     );
 };
 

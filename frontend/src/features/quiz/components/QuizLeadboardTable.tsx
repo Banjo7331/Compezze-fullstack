@@ -1,57 +1,59 @@
 import React from 'react';
-import { 
-    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, Box 
-} from '@mui/material';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import { Table, Typography, Empty, Tag } from 'antd';
+import { TrophyOutlined } from '@ant-design/icons';
 import type { LeaderboardEntryDto } from '../model/socket.types';
+
+const { Text } = Typography;
 
 interface Props {
     leaderboard: LeaderboardEntryDto[];
 }
 
 export const QuizLeaderboardTable: React.FC<Props> = ({ leaderboard }) => {
-    if (!leaderboard || leaderboard.length === 0) {
-        return <Typography align="center" color="text.secondary" sx={{ p: 2 }}>Brak danych o wynikach.</Typography>;
-    }
-
-    const getIcon = (rank: number) => {
-        if (rank === 1) return '🥇';
-        if (rank === 2) return '🥈';
-        if (rank === 3) return '🥉';
-        return `#${rank}`;
-    };
+    const columns = [
+        {
+            title: 'Rank',
+            dataIndex: 'rank',
+            key: 'rank',
+            width: 80,
+            align: 'center' as const,
+            render: (rank: number) => {
+                let icon = <span>#{rank}</span>;
+                if (rank === 1) icon = <span style={{ fontSize: 20 }}>🥇</span>;
+                if (rank === 2) icon = <span style={{ fontSize: 20 }}>🥈</span>;
+                if (rank === 3) icon = <span style={{ fontSize: 20 }}>🥉</span>;
+                return icon;
+            },
+        },
+        {
+            title: 'Player',
+            dataIndex: 'nickname',
+            key: 'nickname',
+            render: (text: string, record: LeaderboardEntryDto) => (
+                <Text strong={record.rank <= 3}>{text}</Text>
+            ),
+        },
+        {
+            title: 'Score',
+            dataIndex: 'score',
+            key: 'score',
+            align: 'right' as const,
+            render: (score: number) => (
+                <Text type="success" strong>{score} pts</Text>
+            ),
+        },
+    ];
 
     return (
-        <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
-            <Table size="small">
-                <TableHead sx={{ bgcolor: '#f5f5f5' }}>
-                    <TableRow>
-                        <TableCell align="center" width="15%">Miejsce</TableCell>
-                        <TableCell>Gracz</TableCell>
-                        <TableCell align="right">Punkty</TableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {leaderboard.map((entry) => (
-                        <TableRow 
-                            key={entry.userId || entry.rank}
-                            sx={{ 
-                                bgcolor: entry.rank <= 3 ? 'rgba(255, 215, 0, 0.05)' : 'inherit' 
-                            }}
-                        >
-                            <TableCell align="center" sx={{ fontSize: '1.2rem' }}>
-                                {getIcon(entry.rank)}
-                            </TableCell>
-                            <TableCell sx={{ fontWeight: entry.rank <= 3 ? 'bold' : 'normal' }}>
-                                {entry.nickname}
-                            </TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                                {entry.score}
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </TableContainer>
+        <Table
+            columns={columns}
+            dataSource={leaderboard}
+            rowKey={(record) => record.userId || record.rank.toString()}
+            pagination={false}
+            size="small"
+            locale={{ emptyText: <Empty description="No leaderboard data available." image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
+            rowClassName={(record) => record.rank <= 3 ? 'top-rank-row' : ''}
+            style={{ marginTop: 16 }}
+        />
     );
 };

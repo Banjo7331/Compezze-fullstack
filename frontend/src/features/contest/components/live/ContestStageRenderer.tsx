@@ -4,12 +4,12 @@ import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 
 import type { StageSettingsResponse } from '@/features/contest/model/types';
 
-import { EmbeddedQuizRoom } from './stages/EmbededQuizRoom';
-import { EmbeddedSurveyRoom } from './stages/EmbededSurveyRoom';
+import { EmbeddedQuizRoom } from './live/stages/EmbededQuizRoom';
+import { EmbeddedSurveyRoom } from './live/stages/EmbededSurveyRoom';
 
-import { ContestJuryStage } from './stages/ContestJuryStage';
-import { ContestPublicVoteStage } from './stages/ContestPublicVoteStage';
-import { ContestGenericStage } from './stages/ContestGenericStage';
+import { ContestJuryStage } from './live/stages/ContestJuryStage';
+import { ContestPublicVoteStage } from './live/stages/ContestPublicVoteStage';
+import { ContestGenericStage } from './live/stages/ContestGenericStage';
 
 interface Props {
     roomId: string;

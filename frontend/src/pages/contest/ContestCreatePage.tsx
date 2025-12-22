@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ContestCreateForm } from '@/features/contest/components/ContestCreateForm';
+import { ContestCreateForm } from '@/features/contest/components/form/ContestCreateForm';
 
 const ContestCreatePage: React.FC = () => {
     const navigate = useNavigate();

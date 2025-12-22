@@ -21,8 +21,8 @@ const NavBar: React.FC = () => {
 
   const navItems = [
     { label: 'Contest', path: '/contest' },
-    { label: 'Survey', path: '/survey' },
     { label: 'Quiz', path: '/quiz' },
+    { label: 'Survey', path: '/survey' },
   ];
 
   const userMenuPayload: MenuProps['items'] = [

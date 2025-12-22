@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Popover, 
   Badge, 
   Button, 
   List, 
-  Tabs, 
+  Select, 
   Typography, 
   Empty, 
   theme,
-  Space
+  Space,
+  Divider
 } from 'antd';
 import { 
   BellOutlined, 
@@ -16,7 +17,7 @@ import {
   TrophyOutlined, 
   QuestionCircleOutlined, 
   CloseOutlined,
-  CheckCircleOutlined
+  FilterOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
@@ -27,11 +28,12 @@ import {
 } from '@/app/providers/NotificationProvider';
 
 const { Text } = Typography;
+const { Option } = Select;
 
 export const NotificationCenter: React.FC = () => {
   const { notifications, unreadCount, markAsRead, removeNotification, clearAll } = useNotificationCenter();
   const [open, setOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>('ALL');
+  const [filterType, setFilterType] = useState<string>('ALL');
   const navigate = useNavigate();
   const { token } = theme.useToken();
 
@@ -39,10 +41,18 @@ export const NotificationCenter: React.FC = () => {
     setOpen(newOpen);
   };
 
-  const filteredNotifications = notifications.filter((n) => {
-    if (activeTab === 'ALL') return true;
-    return n.type === activeTab;
-  });
+  const filteredNotifications = useMemo(() => {
+    if (filterType === 'ALL') return notifications;
+    return notifications.filter(n => n.type === filterType);
+  }, [notifications, filterType]);
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { ALL: notifications.length };
+    notifications.forEach(n => {
+      c[n.type] = (c[n.type] || 0) + 1;
+    });
+    return c;
+  }, [notifications]);
 
   const handleAction = (notif: AppNotification) => {
     markAsRead(notif.id);
@@ -62,48 +72,62 @@ export const NotificationCenter: React.FC = () => {
   };
 
   const content = (
-    <div style={{ width: 360 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, padding: '0 8px' }}>
+    <div style={{ width: 380 }}>
+      <div style={{ padding: '8px 16px 8px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text strong style={{ fontSize: 16 }}>Notifications</Text>
-        {notifications.length > 0 && (
-          <Button type="link" size="small" onClick={clearAll} style={{ padding: 0 }}>
-            Clear all
-          </Button>
-        )}
+        
+        <Select
+          defaultValue="ALL"
+          value={filterType}
+          onChange={setFilterType}
+          style={{ width: 160 }}
+          size="small"
+          suffixIcon={<FilterOutlined style={{ fontSize: 10 }} />}
+          dropdownMatchSelectWidth={false}
+        >
+          <Option value="ALL">All ({counts.ALL || 0})</Option>
+          <Option value="CONTEST">
+            <Space><TrophyOutlined /> Contests ({counts.CONTEST || 0})</Space>
+          </Option>
+          <Option value="QUIZ">
+            <Space><QuestionCircleOutlined /> Quizzes ({counts.QUIZ || 0})</Space>
+          </Option>
+          <Option value="SURVEY">
+            <Space><BarChartOutlined /> Surveys ({counts.SURVEY || 0})</Space>
+          </Option>
+        </Select>
       </div>
 
-      <Tabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-        items={[
-          { key: 'ALL', label: 'All' },
-          { key: 'CONTEST', label: 'Contests', icon: <TrophyOutlined /> },
-          { key: 'SURVEY', label: 'Surveys', icon: <BarChartOutlined /> },
-          { key: 'QUIZ', label: 'Quizzes', icon: <QuestionCircleOutlined /> },
-        ]}
-        tabBarStyle={{ marginBottom: 0, padding: '0 8px' }}
-      />
+      <Divider style={{ margin: 0 }} />
 
       <div style={{ maxHeight: 400, overflowY: 'auto', padding: 0 }}>
         {filteredNotifications.length === 0 ? (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No notifications" />
+          <Empty 
+            image={Empty.PRESENTED_IMAGE_SIMPLE} 
+            description="No notifications found" 
+            style={{ margin: '24px 0' }}
+          />
         ) : (
           <List
             itemLayout="horizontal"
             dataSource={filteredNotifications}
             renderItem={(item) => (
               <List.Item
+                className="notification-item"
                 style={{ 
                   padding: '12px 16px',
                   backgroundColor: item.isRead ? 'transparent' : token.colorFillAlter,
                   cursor: item.actionUrl ? 'pointer' : 'default',
-                  transition: 'background-color 0.3s'
+                  borderBottom: `1px solid ${token.colorSplit}`,
+                  transition: 'background-color 0.2s'
                 }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = token.colorFillSecondary; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = item.isRead ? 'transparent' : token.colorFillAlter; }}
                 actions={[
                   <Button 
                     key="close" 
                     type="text" 
-                    icon={<CloseOutlined style={{ fontSize: 12 }} />} 
+                    icon={<CloseOutlined style={{ fontSize: 10, color: token.colorTextSecondary }} />} 
                     size="small"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -117,33 +141,32 @@ export const NotificationCenter: React.FC = () => {
                   avatar={
                     <div style={{ 
                       backgroundColor: token.colorBgContainer, 
-                      padding: 8, 
+                      width: 36, height: 36, 
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
                       borderRadius: '50%', 
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)' 
+                      border: `1px solid ${token.colorBorderSecondary}`
                     }}>
                       {getIcon(item.type)}
                     </div>
                   }
                   title={
-                    <Space size={4}>
-                      <Text strong={!item.isRead}>{item.title}</Text>
-                      {!item.isRead && <Badge status="processing" />}
-                    </Space>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text strong={!item.isRead} style={{ fontSize: 14 }}>{item.title}</Text>
+                      {!item.isRead && <Badge status="processing" color={token.colorPrimary} />}
+                    </div>
                   }
                   description={
                     <div>
-                      <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 4 }}>
+                      <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 4, lineHeight: 1.4 }}>
                         {item.message}
                       </Text>
-                      <Space split={<div style={{ width: 1, height: 10, background: '#d9d9d9' }} />}>
+                      <Space size={8} split={<Divider type="vertical" style={{ margin: 0 }} />}>
                         <Text type="secondary" style={{ fontSize: 11 }}>
-                          {new Date(item.timestamp).toLocaleTimeString()}
+                          {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </Text>
-                        {item.actionUrl && (
-                          <Text style={{ fontSize: 11, color: token.colorPrimary }}>
-                            Click to open
-                          </Text>
-                        )}
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                          {item.type}
+                        </Text>
                       </Space>
                     </div>
                   }
@@ -153,6 +176,17 @@ export const NotificationCenter: React.FC = () => {
           />
         )}
       </div>
+
+      {notifications.length > 0 && (
+        <>
+          <Divider style={{ margin: 0 }} />
+          <div style={{ padding: '8px 16px', textAlign: 'center', backgroundColor: token.colorBgLayout }}>
+            <Button type="link" size="small" onClick={clearAll} style={{ color: token.colorTextSecondary }}>
+              Clear all notifications
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 
@@ -163,7 +197,8 @@ export const NotificationCenter: React.FC = () => {
       open={open}
       onOpenChange={handleOpenChange}
       placement="topRight"
-      overlayInnerStyle={{ padding: '12px 0' }}
+      overlayInnerStyle={{ padding: 0 }}
+      arrow={false}
     >
       <div 
         style={{ 
@@ -173,19 +208,17 @@ export const NotificationCenter: React.FC = () => {
           zIndex: 2000 
         }}
       >
-        <Badge count={unreadCount} overflowCount={99}>
+        <Badge count={unreadCount} overflowCount={99} offset={[-5, 5]}>
           <Button
             type="primary"
             shape="circle"
             size="large"
-            icon={<BellOutlined style={{ fontSize: 20 }} />}
+            icon={<BellOutlined style={{ fontSize: 22 }} />}
             style={{ 
               width: 56, 
               height: 56, 
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center'
+              boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
+              border: 'none'
             }}
           />
         </Badge>

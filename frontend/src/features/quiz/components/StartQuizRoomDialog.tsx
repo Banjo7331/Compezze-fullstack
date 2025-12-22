@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { 
-    Dialog, DialogTitle, DialogContent, DialogActions, 
-    TextField, Button, Stack, Typography, InputAdornment
-} from '@mui/material';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import TimerIcon from '@mui/icons-material/Timer';
+import React, { useEffect } from 'react';
+import { Modal, Form, InputNumber, Button, Typography, Space } from 'antd';
+import { PlayCircleOutlined, ClockCircleOutlined, TeamOutlined } from '@ant-design/icons';
+
+const { Text } = Typography;
 
 interface StartQuizRoomDialogProps {
     open: boolean;
@@ -13,99 +11,102 @@ interface StartQuizRoomDialogProps {
     isLoading?: boolean;
 }
 
-export const StartQuizRoomDialog: React.FC<StartQuizRoomDialogProps> = ({ open, onClose, onConfirm, isLoading }) => {
-    const [maxParticipants, setMaxParticipants] = useState<string>('100');
-    const [timePerQuestion, setTimePerQuestion] = useState<string>('30');
+interface FormValues {
+    maxParticipants: number;
+    timePerQuestion: number;
+}
 
-    const [participantsError, setParticipantsError] = useState<string | null>(null);
-    const [timeError, setTimeError] = useState<string | null>(null);
+export const StartQuizRoomDialog: React.FC<StartQuizRoomDialogProps> = ({ 
+    open, onClose, onConfirm, isLoading 
+}) => {
+    const [form] = Form.useForm<FormValues>();
 
     useEffect(() => {
         if (open) {
-            setMaxParticipants('100');
-            setTimePerQuestion('30');
-            setParticipantsError(null);
-            setTimeError(null);
+            form.resetFields();
         }
-    }, [open]);
+    }, [open, form]);
 
-    const handleParticipantsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
-        setMaxParticipants(val);
-        const num = Number(val);
-        if (!val) setParticipantsError("Pole wymagane");
-        else if (isNaN(num) || num < 2) setParticipantsError("Min 2 graczy");
-        else if (num > 1000) setParticipantsError("Max 1000 graczy");
-        else setParticipantsError(null);
+    const handleOk = () => {
+        form.validateFields()
+            .then((values) => {
+                onConfirm(values);
+            })
+            .catch((info) => {
+                console.log('Validate Failed:', info);
+            });
     };
-
-    const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
-        setTimePerQuestion(val);
-        const num = Number(val);
-        if (!val) setTimeError("Pole wymagane");
-        else if (isNaN(num) || num < 5) setTimeError("Min 5 sekund");
-        else if (num > 300) setTimeError("Max 300 sekund (5 min)");
-        else setTimeError(null);
-    };
-
-    const handleSubmit = () => {
-        if (participantsError || timeError || !maxParticipants || !timePerQuestion) return;
-        
-        onConfirm({ 
-            maxParticipants: Number(maxParticipants),
-            timePerQuestion: Number(timePerQuestion)
-        });
-    };
-
-    const isValid = !participantsError && !timeError && maxParticipants !== '' && timePerQuestion !== '';
 
     return (
-        <Dialog open={open} onClose={!isLoading ? onClose : undefined} maxWidth="sm" fullWidth>
-            <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <PlayArrowIcon color="success" />
-                Uruchom Grę
-            </DialogTitle>
-            
-            <DialogContent dividers>
-                <Stack spacing={3} sx={{ mt: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
-                        Skonfiguruj parametry rozgrywki.
-                    </Typography>
+        <Modal
+            title={
+                <Space>
+                    <PlayCircleOutlined style={{ color: '#52c41a' }} />
+                    <span>Start Game</span>
+                </Space>
+            }
+            open={open}
+            onCancel={!isLoading ? onClose : undefined}
+            onOk={handleOk}
+            confirmLoading={isLoading}
+            okText="Create Lobby"
+            okButtonProps={{ 
+                type: 'primary', 
+                style: { backgroundColor: '#52c41a', borderColor: '#52c41a' }
+            }}
+            cancelText="Cancel"
+            width={500}
+            centered
+        >
+            <div style={{ marginBottom: 24 }}>
+                <Text type="secondary">
+                    Configure game parameters before starting the lobby.
+                </Text>
+            </div>
 
-                    <TextField
-                        label="Czas na jedno pytanie (sekundy)"
-                        type="number"
-                        fullWidth
-                        value={timePerQuestion}
-                        onChange={handleTimeChange}
-                        error={!!timeError}
-                        helperText={timeError || "Ile czasu gracze mają na odpowiedź?"}
-                        InputProps={{ 
-                            startAdornment: <InputAdornment position="start"><TimerIcon/></InputAdornment>,
-                            inputProps: { min: 5, max: 300 } 
-                        }}
+            <Form
+                form={form}
+                layout="vertical"
+                initialValues={{
+                    timePerQuestion: 30,
+                    maxParticipants: 100
+                }}
+            >
+                <Form.Item
+                    name="timePerQuestion"
+                    label="Time per Question (seconds)"
+                    tooltip="How much time players have to answer?"
+                    rules={[
+                        { required: true, message: 'This field is required' },
+                        { type: 'number', min: 5, message: 'Min 5 seconds' },
+                        { type: 'number', max: 300, message: 'Max 300 seconds (5 min)' }
+                    ]}
+                >
+                    <InputNumber 
+                        style={{ width: '100%' }} 
+                        addonBefore={<ClockCircleOutlined />}
+                        min={5} 
+                        max={300} 
                     />
+                </Form.Item>
 
-                    <TextField
-                        label="Limit graczy"
-                        type="number"
-                        fullWidth
-                        value={maxParticipants}
-                        onChange={handleParticipantsChange}
-                        error={!!participantsError} 
-                        helperText={participantsError || "Maksymalna liczba uczestników."}
-                        InputProps={{ inputProps: { min: 2, max: 1000 } }}
+                <Form.Item
+                    name="maxParticipants"
+                    label="Player Limit"
+                    rules={[
+                        { required: true, message: 'This field is required' },
+                        { type: 'number', min: 2, message: 'Min 2 players' },
+                        { type: 'number', max: 1000, message: 'Max 1000 players' }
+                    ]}
+                >
+                    <InputNumber 
+                        style={{ width: '100%' }} 
+                        addonBefore={<TeamOutlined />}
+                        min={2} 
+                        max={1000} 
                     />
-                </Stack>
-            </DialogContent>
-
-            <DialogActions sx={{ p: 2 }}>
-                <Button onClick={onClose} disabled={isLoading} color="inherit">Anuluj</Button>
-                <Button onClick={handleSubmit} variant="contained" color="success" disabled={isLoading || !isValid}>
-                    {isLoading ? "Tworzenie..." : "Utwórz Lobby"}
-                </Button>
-            </DialogActions>
-        </Dialog>
+                </Form.Item>
+            </Form>
+        </Modal>
     );
 };
