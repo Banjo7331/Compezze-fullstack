@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-    Container, Typography, Box, Alert, CircularProgress, 
-    Button as MuiButton, Paper, Stack, Divider, Grid 
-} from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import SendIcon from '@mui/icons-material/Send';
+    Layout, Typography, Alert, Spin, Button, 
+    Card, Row, Col, Result, Divider 
+} from 'antd';
+import { ArrowLeftOutlined, CheckCircleOutlined } from '@ant-design/icons';
 
 import { surveyService } from '@/features/survey/api/surveyService';
-import { SurveySubmissionForm } from '@/features/survey/components/SurveySubmissionForm';
-import { LiveResultSurveyDashboard } from '@/features/survey/components/LiveResultSurveyDashboard';
-import { RoomControlPanel } from '@/features/survey/components/RoomControlPanel';
-import { InviteUsersPanel } from '@/features/survey/components/InviteUserPanel';
+import { SurveySubmissionForm } from '@/features/survey/components/live/SurveySubmissionForm';
+import { LiveResultSurveyDashboard } from '@/features/survey/components/live/LiveResultSurveyDashboard';
+import { RoomControlPanel } from '@/features/survey/components/live/RoomControlPanel';
+import { InviteUsersPanel } from '@/features/survey/components/live/InviteUserPanel';
 
 import type { SurveyFormStructure } from '@/features/survey/model/types';
+
+const { Content } = Layout;
+const { Title, Text } = Typography;
 
 const SurveyRoomPage: React.FC = () => {
     const { roomId } = useParams<{ roomId: string }>();
@@ -57,69 +59,77 @@ const SurveyRoomPage: React.FC = () => {
         console.log("Room closed.");
     };
 
-    if (!roomId) return <Container><Alert severity="error">Missing Room ID</Alert></Container>;
+    if (!roomId) return <div style={{ padding: 24 }}><Alert message="Error" description="Missing Room ID" type="error" showIcon /></div>;
 
     if (loadingState === 'LOADING') {
         return (
-            <Container sx={{ mt: 10, textAlign: 'center' }}>
-                <CircularProgress />
-                <Typography sx={{ mt: 2 }}>Entering Room...</Typography>
-            </Container>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 100 }}>
+                <Spin size="large" tip="Entering Room..." />
+            </div>
         );
     }
 
     if (loadingState === 'ERROR') {
         return (
-            <Container sx={{ mt: 10 }}>
-                <Alert severity="error">{errorMsg}</Alert>
-                <MuiButton onClick={() => navigate('/survey')} sx={{ mt: 2 }}>Back</MuiButton>
-            </Container>
+            <div style={{ maxWidth: 600, margin: '100px auto', padding: 24 }}>
+                <Result
+                    status="error"
+                    title="Access Denied"
+                    subTitle={errorMsg}
+                    extra={[
+                        <Button type="primary" key="back" onClick={() => navigate('/survey')}>
+                            Back to Survey Center
+                        </Button>
+                    ]}
+                />
+            </div>
         );
     }
 
     return (
-        <Container maxWidth="lg">
-            <Box sx={{ my: 4 }}>
+        <Layout style={{ minHeight: '100vh', background: '#f0f2f5' }}>
+            <Content style={{ padding: '24px', maxWidth: 1200, margin: '0 auto', width: '100%' }}>
+                
                 {isHost && (
-                    <Grid container spacing={4}>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                            <RoomControlPanel roomId={roomId} onCloseSuccess={handleRoomClosed} />
-                            <InviteUsersPanel roomId={roomId} />
-                            
-                            <Box sx={{ textAlign: 'center', mt: 2 }}>
-                                <MuiButton onClick={() => navigate('/survey')} startIcon={<ArrowBackIcon />}>
-                                    Back to My Surveys
-                                </MuiButton>
-                            </Box>
-                        </Grid>
+                    <Row gutter={[24, 24]}>
+                        <Col xs={24} md={8}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                                <RoomControlPanel roomId={roomId} onCloseSuccess={handleRoomClosed} />
+                                <InviteUsersPanel roomId={roomId} />
+                                
+                                <div style={{ textAlign: 'center' }}>
+                                    <Button onClick={() => navigate('/survey')} icon={<ArrowLeftOutlined />}>
+                                        Back to My Surveys
+                                    </Button>
+                                </div>
+                            </div>
+                        </Col>
 
-                        <Grid size={{ xs: 12, md: 8 }}>
-                            <Paper elevation={3} sx={{ p: 3 }}>
-                                <Typography variant="h5" color="primary" gutterBottom>Host Dashboard</Typography>
+                        <Col xs={24} md={16}>
+                            <Card title={<Title level={4} style={{ margin: 0 }}>Host Dashboard</Title>}>
                                 <LiveResultSurveyDashboard roomId={roomId} isHost={true} />
-                            </Paper>
-                        </Grid>
-                    </Grid>
+                            </Card>
+                        </Col>
+                    </Row>
                 )}
 
 
                 {!isHost && (
-                    <Container maxWidth="md">
+                    <div style={{ maxWidth: 800, margin: '0 auto' }}>
                         {isSubmitted ? (
-                            <Paper elevation={4} sx={{ p: 4 }}>
-                                <Stack alignItems="center" spacing={2} sx={{ mb: 3 }}>
-                                    <SendIcon color="success" sx={{ fontSize: 60 }} />
-                                    <Typography variant="h5" color="success.main">Survey Completed</Typography>
-                                    <Typography variant="body2">Thank you! Watch the live results below.</Typography>
-                                </Stack>
-                                <Divider sx={{ mb: 3 }} />
-                                
+                            <Card>
+                                <Result
+                                    status="success"
+                                    title="Survey Completed!"
+                                    subTitle="Thank you for your participation. You can watch the live results below."
+                                />
+                                <Divider />
                                 <LiveResultSurveyDashboard 
                                     roomId={roomId} 
                                     isHost={false} 
                                     isParticipantSubmitted={true} 
                                 />
-                            </Paper>
+                            </Card>
                         ) : (
                             surveyForm ? (
                                 <SurveySubmissionForm
@@ -129,14 +139,14 @@ const SurveyRoomPage: React.FC = () => {
                                     onSubmissionFailure={handleSubmissionFailure}
                                 />
                             ) : (
-                                <Alert severity="warning">Loading form data failed.</Alert>
+                                <Alert message="Warning" description="Loading form data failed." type="warning" showIcon />
                             )
                         )}
-                    </Container>
+                    </div>
                 )}
 
-            </Box>
-        </Container>
+            </Content>
+        </Layout>
     );
 };
 

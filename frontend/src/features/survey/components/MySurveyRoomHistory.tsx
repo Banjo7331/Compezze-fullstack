@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    Box, Typography, Paper, Stack, Chip, IconButton, Pagination, CircularProgress, Tooltip
-} from '@mui/material';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import BarChartIcon from '@mui/icons-material/BarChart';
-import PersonIcon from '@mui/icons-material/Person';
+    List, Typography, Button, Pagination, Spin, Tooltip, 
+    Tag, Space, Empty 
+} from 'antd';
+import { EyeOutlined, BarChartOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
-import { surveyService } from '../api/surveyService';
-import type { MySurveyRoomDto } from '../model/types';
-import { SurveyResultsDialog } from './SurveyRoomResultsDialog';
+import { surveyService } from '@/features/survey/api/surveyService';
+import type { MySurveyRoomDto } from '@/features/survey/model/types';
+import { SurveyRoomResultsDialog } from '@/features/survey/components/SurveyRoomResultsDialog';
+
+const { Text } = Typography;
 
 export const MySurveyRoomHistory: React.FC = () => {
     const navigate = useNavigate();
     const [rooms, setRooms] = useState<MySurveyRoomDto[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [page, setPage] = useState(0);
-    const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
 
     const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -37,7 +38,7 @@ export const MySurveyRoomHistory: React.FC = () => {
             try {
                 const data = await surveyService.getMyRoomsHistory({ page, size: 5, sort: 'createdAt,desc' });
                 setRooms(data.content);
-                setTotalPages(data.totalPages);
+                setTotalItems(data.totalElements);
             } catch (e) {
                 console.error(e);
             } finally {
@@ -47,71 +48,74 @@ export const MySurveyRoomHistory: React.FC = () => {
         loadData();
     }, [page]);
 
-    if (isLoading) return <CircularProgress sx={{ display: 'block', mx: 'auto', my: 4 }} />;
+    if (isLoading && rooms.length === 0) return <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>;
 
     if (rooms.length === 0) {
-        return <Typography color="text.secondary" align="center" sx={{ py: 4 }}>Brak historii sesji.</Typography>;
+        return <Empty description="No session history found." image={Empty.PRESENTED_IMAGE_SIMPLE} />;
     }
 
     return (
-        <Box>
-            <Stack spacing={2}>
-                {rooms.map((room) => (
-                    <Paper 
-                        key={room.roomId} 
-                        variant="outlined" 
-                        sx={{ 
-                            p: 2, 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center',
-                            borderLeft: `4px solid ${room.isOpen ? '#4caf50' : '#9e9e9e'}`
+        <div>
+            <List
+                dataSource={rooms}
+                renderItem={(room) => (
+                    <List.Item
+                        actions={[
+                            <Tooltip title="View Results" key="view">
+                                <Button 
+                                    type="text" 
+                                    icon={<EyeOutlined style={{ color: '#1890ff', fontSize: 18 }} />} 
+                                    onClick={() => handleOpenResults(room.roomId)}
+                                />
+                            </Tooltip>
+                        ]}
+                        style={{ 
+                            padding: '12px 16px', 
+                            borderLeft: `4px solid ${room.isOpen ? '#52c41a' : '#d9d9d9'}`,
+                            marginBottom: 12,
+                            background: '#fff',
+                            border: '1px solid #f0f0f0',
+                            borderRadius: 4
                         }}
                     >
-                        <Box>
-                            <Typography variant="subtitle1" fontWeight="bold">
-                                {room.surveyTitle}
-                            </Typography>
-                            
-                            <Stack direction="row" spacing={2} sx={{ mt: 1 }} alignItems="center">
-                                <Chip 
-                                    label={room.isOpen ? "AKTYWNY" : "ZAKOŃCZONY"} 
-                                    color={room.isOpen ? "success" : "default"} 
-                                    size="small" 
-                                />
-                                <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                    <span style={{ display: 'flex', alignItems: 'center' }}>
-                                        <PersonIcon fontSize="inherit" sx={{ mr: 0.5 }}/> {room.totalParticipants}
-                                    </span>
-                                    <span style={{ display: 'flex', alignItems: 'center' }}>
-                                        <BarChartIcon fontSize="inherit" sx={{ mr: 0.5 }}/> {room.totalSubmissions}
-                                    </span>
-                                    <span>
-                                        {new Date(room.createdAt).toLocaleDateString()}
-                                    </span>
-                                </Typography>
-                            </Stack>
-                        </Box>
-                        
-                        <Tooltip title="Zobacz Wyniki">
-                            <IconButton color="primary" onClick={() => handleOpenResults(room.roomId)}>
-                                <VisibilityIcon />
-                            </IconButton>
-                        </Tooltip>
-                    </Paper>
-                ))}
-            </Stack>
+                        <List.Item.Meta
+                            title={<Text strong>{room.surveyTitle}</Text>}
+                            description={
+                                <Space wrap size={8}>
+                                    <Tag color={room.isOpen ? "success" : "default"}>
+                                        {room.isOpen ? "ACTIVE" : "FINISHED"}
+                                    </Tag>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                        <Space>
+                                            <span><UserOutlined /> {room.totalParticipants}</span>
+                                            <span><BarChartOutlined /> {room.totalSubmissions}</span>
+                                            <span>{new Date(room.createdAt).toLocaleDateString()}</span>
+                                        </Space>
+                                    </Text>
+                                </Space>
+                            }
+                        />
+                    </List.Item>
+                )}
+            />
 
-            {totalPages > 1 && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-                    <Pagination count={totalPages} page={page + 1} onChange={(_, v) => setPage(v - 1)} color="primary" />
-                </Box>
+            {totalItems > 5 && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+                    <Pagination 
+                        current={page + 1} 
+                        total={totalItems} 
+                        pageSize={5}
+                        onChange={(p) => setPage(p - 1)} 
+                        size="small"
+                    />
+                </div>
             )}
-            <SurveyResultsDialog 
+
+            <SurveyRoomResultsDialog 
                 open={isDialogOpen}
                 roomId={selectedRoomId}
                 onClose={handleCloseResults}
             />
-        </Box>
+        </div>
     );
 };

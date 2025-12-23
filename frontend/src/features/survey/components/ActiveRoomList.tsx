@@ -1,30 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import { 
-    Box, Typography, Paper, Button, CircularProgress, Stack, Pagination, Chip, 
-    TextField, InputAdornment, Alert 
-} from '@mui/material';
-import PersonIcon from '@mui/icons-material/Person';
-import MeetingRoomIcon from '@mui/icons-material/MeetingRoom';
-import SearchIcon from '@mui/icons-material/Search'; // ✅
+    List, Button, Pagination, Input, Tag, Card, Typography, 
+    Space, Alert, Empty, Spin 
+} from 'antd';
+import { 
+    SearchOutlined, 
+    UserOutlined, 
+    FormOutlined,
+    LoginOutlined
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
-import { surveyService } from '../api/surveyService'; // Bezpośrednie użycie serwisu
-import { useDebounce } from '@/shared/hooks/useDebounce'; // ✅
+import { surveyService } from '../api/surveyService';
+import { useDebounce } from '@/shared/hooks/useDebounce';
 import type { ActiveRoomResponse } from '../model/types';
+
+const { Text } = Typography;
 
 export const ActiveRoomsList: React.FC = () => {
     const navigate = useNavigate();
     
-    // Stan Danych
     const [rooms, setRooms] = useState<ActiveRoomResponse[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     
-    // Stan Paginacji
-    const [page, setPage] = useState(0);
-    const [totalPages, setTotalPages] = useState(0);
+    const [page, setPage] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
 
-    // ✅ Stan Wyszukiwania
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebounce(search, 500);
 
@@ -33,113 +35,105 @@ export const ActiveRoomsList: React.FC = () => {
             setIsLoading(true);
             try {
                 const data = await surveyService.getActiveRooms({ 
-                    page, 
+                    page: page - 1,
                     size: 10, 
                     sort: 'createdAt,desc',
-                    search: debouncedSearch // ✅ Przekazujemy parametr
+                    search: debouncedSearch 
                 });
                 setRooms(data.content);
-                setTotalPages(data.totalPages);
+                setTotalItems(data.totalElements);
                 setError(null);
             } catch (err) {
                 console.error(err);
-                setError("Nie udało się pobrać listy aktywnych ankiet.");
+                setError("Failed to fetch active surveys.");
             } finally {
                 setIsLoading(false);
             }
         };
 
         fetchRooms();
-    }, [page, debouncedSearch]); // Odświeżamy przy zmianie searcha
+    }, [page, debouncedSearch]);
 
-    // Reset strony po wyszukaniu
-    useEffect(() => { setPage(0); }, [debouncedSearch]);
+    useEffect(() => { setPage(1); }, [debouncedSearch]);
 
-    const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
-        setPage(value - 1);
+    const handlePageChange = (newPage: number) => {
+        setPage(newPage);
     };
 
     return (
-        <Box>
-            {/* ✅ SEKCJA WYSZUKIWANIA */}
-            <Box mb={3}>
-                <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Szukaj ankiety po nazwie..."
+        <div>
+            <div style={{ marginBottom: 24 }}>
+                <Input
+                    size="large"
+                    placeholder="Search active surveys..."
+                    prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <SearchIcon color="action" />
-                            </InputAdornment>
-                        ),
-                    }}
-                    sx={{ bgcolor: 'white', borderRadius: 1 }}
+                    allowClear
                 />
-            </Box>
+            </div>
 
-            {isLoading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}><CircularProgress /></Box>
-            ) : error ? (
-                <Typography color="error">{error}</Typography>
-            ) : rooms.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 4 }}>
-                    <MeetingRoomIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
-                    <Typography color="text.secondary">
-                        {search ? "Nie znaleziono ankiet o tej nazwie." : "Brak aktywnych ankiet w tym momencie."}
-                    </Typography>
-                </Box>
-            ) : (
-                <Stack spacing={2}>
-                    {rooms.map((room) => (
-                        <Paper 
-                            key={room.roomId} 
-                            elevation={2} 
-                            sx={{ 
-                                p: 2, 
-                                borderLeft: '6px solid #4caf50', 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                alignItems: 'center' 
-                            }}
-                        >
-                            <Box>
-                                <Typography variant="h6" fontWeight="bold">{room.surveyTitle}</Typography>
-                                <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
-                                    <Chip 
-                                        icon={<PersonIcon />} 
-                                        label={`${room.currentParticipants} / ${room.maxParticipants || '∞'}`} 
-                                        size="small" 
-                                        variant="outlined" 
-                                    />
-                                    {/* Opcjonalnie ID */}
-                                </Stack>
-                            </Box>
+            {error && (
+                <Alert message="Error" description={error} type="error" showIcon style={{ marginBottom: 24 }} />
+            )}
+
+            <List
+                loading={isLoading}
+                itemLayout="horizontal"
+                dataSource={rooms}
+                locale={{
+                    emptyText: (
+                        <Empty 
+                            image={Empty.PRESENTED_IMAGE_SIMPLE} 
+                            description={search ? "No surveys found." : "No active surveys right now."} 
+                        />
+                    )
+                }}
+                renderItem={(room) => (
+                    <Card 
+                        hoverable
+                        style={{ marginBottom: 16, borderLeft: '4px solid #52c41a' }}
+                        bodyStyle={{ padding: '16px 24px' }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
                             
+                            <div style={{ flex: 1, minWidth: 200 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                    <FormOutlined style={{ color: '#52c41a', fontSize: 18 }} />
+                                    <Text strong style={{ fontSize: 16 }}>{room.surveyTitle}</Text>
+                                </div>
+                                
+                                <Space>
+                                    <Tag icon={<UserOutlined />}>
+                                        {room.currentParticipants} / {room.maxParticipants || '∞'}
+                                    </Tag>
+                                </Space>
+                            </div>
+
                             <Button 
-                                variant="contained" 
-                                color="success"
+                                type="primary" 
+                                style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                                icon={<LoginOutlined />}
                                 onClick={() => navigate(`/survey/join/${room.roomId}`)}
                             >
                                 Join
                             </Button>
-                        </Paper>
-                    ))}
-                </Stack>
-            )}
+                        </div>
+                    </Card>
+                )}
+            />
 
-            {totalPages > 1 && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+            {totalItems > 10 && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 24 }}>
                     <Pagination 
-                        count={totalPages} 
-                        page={page + 1} 
+                        current={page} 
+                        total={totalItems} 
+                        pageSize={10}
                         onChange={handlePageChange} 
-                        color="primary" 
+                        showSizeChanger={false}
                     />
-                </Box>
+                </div>
             )}
-        </Box>
+        </div>
     );
 };

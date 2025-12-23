@@ -1,82 +1,107 @@
 import React from 'react';
-import { 
-    Typography, 
-    Container, 
-    Box, 
-    Paper, 
-    Grid, 
-} from '@mui/material';
-import type { ButtonProps } from '@mui/material'; 
-import AddIcon from '@mui/icons-material/Add';
-import { Button } from '@/shared/ui/Button'; 
+import { Typography, Row, Col, Card, Button } from 'antd';
+import { PlusOutlined, BarChartOutlined, LoginOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
-import type { LinkProps } from 'react-router-dom'; 
 
 import { ActiveRoomsList } from '@/features/survey/components/ActiveRoomList';
-import { FeaturedTemplatesWidget } from '@/features/survey/components/FeaturedFormsWidget';
+import { FeaturedFormsWidget } from '@/features/survey/components/FeaturedFormsWidget';
+
+const { Title, Paragraph } = Typography;
 
 const SurveyPage: React.FC = () => {
-    const LinkButton = Button as React.ComponentType<ButtonProps & Pick<LinkProps, 'to'>>;
-
     return (
-        <Container maxWidth="lg">
-            <Box sx={{ my: 4 }}>
-                <Typography variant="h3" component="h1" gutterBottom align="center" sx={{ mb: 5 }}>
-                    Centrum Ankiet
-                </Typography>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px' }}>
+            <div style={{ margin: '32px 0', textAlign: 'center' }}>
+                <Title level={1} style={{ marginBottom: 16, color: '#1890ff' }}>
+                    <BarChartOutlined style={{ marginRight: 16 }} />
+                    Survey Center
+                </Title>
+                <Paragraph type="secondary" style={{ fontSize: 18 }}>
+                    Create polls, collect feedback, and analyze results in real-time.
+                </Paragraph>
+            </div>
 
-                <Grid container spacing={4}>
-                    <Grid size={{ xs: 12, md: 5 }}>
-                        <Paper 
-                            elevation={6} 
-                            sx={{ 
-                                p: 4, 
-                                height: '100%', 
-                                display: 'flex', 
-                                flexDirection: 'column', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                backgroundColor: '#e3f2fd',
-                                borderRadius: 2,
-                                minHeight: 300
-                            }}
-                        >
-                            <AddIcon sx={{ fontSize: 80, color: 'primary.main', mb: 2 }} />
-                            <Typography variant="h4" component="h2" align="center" sx={{ mb: 1 }}>
-                                Nowa Ankieta
-                            </Typography>
-                            <Typography variant="body1" align="center" sx={{ mb: 3, color: 'text.secondary' }}>
-                                Zaprojektuj nowy formularz od zera.
-                            </Typography>
-                            <LinkButton 
-                                variant="contained"
-                                size="large"
-                                startIcon={<AddIcon />}
-                                component={Link}
-                                to="/survey/create"
+            <Row gutter={[24, 24]}>
+                <Col xs={24} md={10} lg={9}>
+                    <Card 
+                        bordered={false}
+                        hoverable
+                        style={{ 
+                            height: '100%', 
+                            backgroundColor: '#e6f7ff',
+                            borderRadius: 12,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            textAlign: 'center',
+                            minHeight: 300,
+                            border: '1px solid #bae7ff'
+                        }}
+                        bodyStyle={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '100%',
+                            padding: 32
+                        }}
+                    >
+                        <PlusOutlined style={{ fontSize: 80, color: '#1890ff', marginBottom: 16 }} />
+                        
+                        <Title level={2} style={{ margin: '0 0 8px 0' }}>
+                            New Survey
+                        </Title>
+                        
+                        <Paragraph type="secondary" style={{ marginBottom: 24, fontSize: 16 }}>
+                            Design a new form from scratch.
+                        </Paragraph>
+
+                        <Link to="/survey/create">
+                            <Button 
+                                type="primary" 
+                                size="large" 
+                                icon={<PlusOutlined />}
+                                style={{
+                                    backgroundColor: '#1890ff', 
+                                    borderColor: '#bae7ff',
+                                    height: 48,
+                                    fontSize: 16,
+                                    padding: '0 32px',
+                                    borderRadius: 6
+                                }}
                             >
-                                START KREATORA
-                            </LinkButton>
-                        </Paper>
-                    </Grid>
+                                START CREATOR
+                            </Button>
+                        </Link>
+                    </Card>
+                </Col>
 
-                    <Grid size={{ xs: 12, md: 7 }}>
-                        <FeaturedTemplatesWidget />
-                    </Grid>
-                    <Grid size={{ xs: 12 }}>
-                        <Box sx={{ mt: 6 }}>
-                            <Typography variant="h4" gutterBottom sx={{ borderBottom: '1px solid #ddd', pb: 1, mb: 3 }}>
-                                🟢 Dostępne Pokoje (Active Rooms)
-                            </Typography>
-                            
-                            <ActiveRoomsList />
-                            
-                        </Box>
-                    </Grid>
+                <Col xs={24} md={14} lg={15}>
+                    <FeaturedFormsWidget />
+                </Col>
 
-                </Grid>
-            </Box>
-        </Container>
+                <Col span={24}>
+                    <div style={{ marginTop: 48 }}>
+                        <div style={{ 
+                            borderBottom: '1px solid #f0f0f0', 
+                            paddingBottom: 16, 
+                            marginBottom: 24,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12
+                        }}>
+                            <LoginOutlined style={{ fontSize: 28, color: '#1890ff' }} />
+                            <Title level={2} style={{ margin: 0 }}>
+                                Active Rooms
+                            </Title>
+                        </div>
+                        
+                        <ActiveRoomsList />
+                    </div>
+                </Col>
+            </Row>
+        </div>
     );
 };
 

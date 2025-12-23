@@ -18,7 +18,7 @@ const QuizPage: React.FC = () => {
             <div style={{ margin: '32px 0' }}>
                 
                 <div style={{ textAlign: 'center', marginBottom: 48 }}>
-                    <Title level={1} style={{ marginBottom: 8, color: '#fa8c16' }}>
+                    <Title level={1} style={{ marginBottom: 8, color: '#1a9b0eff' }}>
                         <TrophyOutlined style={{ fontSize: 48, verticalAlign: 'middle', marginRight: 16 }} />
                         Quiz Center
                     </Title>
@@ -35,7 +35,7 @@ const QuizPage: React.FC = () => {
                             hoverable
                             style={{ 
                                 height: '100%', 
-                                backgroundColor: '#fff7e6',
+                                backgroundColor: '#c0fc9eff',
                                 borderRadius: 12,
                                 display: 'flex',
                                 flexDirection: 'column',
@@ -54,7 +54,7 @@ const QuizPage: React.FC = () => {
                                 padding: 32
                             }}
                         >
-                            <PlusOutlined style={{ fontSize: 80, color: '#fa8c16', marginBottom: 16 }} />
+                            <PlusOutlined style={{ fontSize: 80, color: '#1a9b0eff', marginBottom: 16 }} />
                             
                             <Title level={2} style={{ margin: '0 0 8px 0' }}>
                                 New Quiz
@@ -70,8 +70,8 @@ const QuizPage: React.FC = () => {
                                     size="large" 
                                     icon={<PlusOutlined />}
                                     style={{ 
-                                        backgroundColor: '#fa8c16', 
-                                        borderColor: '#fa8c16',
+                                        backgroundColor: '#1a9b0eff', 
+                                        borderColor: '#c0fc9eff',
                                         height: 48,
                                         fontSize: 16,
                                         padding: '0 32px'
@@ -97,7 +97,7 @@ const QuizPage: React.FC = () => {
                                 alignItems: 'center',
                                 gap: 12
                             }}>
-                                <RocketOutlined style={{ fontSize: 32, color: '#1890ff' }} />
+                                <RocketOutlined style={{ fontSize: 32, color: '#1a9b0eff' }} />
                                 <Title level={2} style={{ margin: 0 }}>
                                     Active Lobbies
                                 </Title>

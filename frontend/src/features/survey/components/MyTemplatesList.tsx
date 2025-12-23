@@ -1,27 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    Box, Typography, Paper, IconButton, Stack, Pagination, 
-    CircularProgress, Alert, Chip, Tooltip 
-} from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+    List, Typography, Button, Pagination, Spin, Tooltip, 
+    Popconfirm, message, Tag, Space, Empty 
+} from 'antd';
+import { 
+    DeleteOutlined, 
+    PlayCircleOutlined, 
+    PlusOutlined,
+    LockOutlined,
+    GlobalOutlined
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
 import { surveyService } from '../api/surveyService';
-import { useSnackbar } from '@/app/providers/SnackbarProvider';
-import { Button } from '@/shared/ui/Button';
+import { Button as CustomButton } from '@/shared/ui/Button';
 import type { MySurveyFormDto, CreateRoomRequest } from '../model/types';
 import { StartSurveyRoomDialog } from './StartSurveyRoomDialog';
 
+const { Text } = Typography;
+
 export const MyTemplatesList: React.FC = () => {
     const navigate = useNavigate();
-    const { showSuccess, showError } = useSnackbar();
+    const [messageApi, contextHolder] = message.useMessage();
     
     const [forms, setForms] = useState<MySurveyFormDto[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [page, setPage] = useState(0);
-    const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     const [startDialogOpen, setStartDialogOpen] = useState(false);
@@ -34,7 +39,7 @@ export const MyTemplatesList: React.FC = () => {
             try {
                 const data = await surveyService.getMyForms({ page, size: 5, sort: 'createdAt,desc' });
                 setForms(data.content);
-                setTotalPages(data.totalPages);
+                setTotalItems(data.totalElements);
             } catch (e) {
                 console.error(e);
             } finally {
@@ -50,14 +55,12 @@ export const MyTemplatesList: React.FC = () => {
     };
 
     const handleDelete = async (id: number) => {
-        if (!window.confirm("Czy na pewno chcesz usunąć ten szablon? Nie będziesz mógł tworzyć z niego nowych sesji.")) return;
-
         try {
             await surveyService.deleteForm(id);
-            showSuccess("Szablon został usunięty.");
+            messageApi.success("Template deleted.");
             setRefreshTrigger(prev => prev + 1);
         } catch (e: any) {
-            showError("Nie udało się usunąć. Sprawdź czy nie ma aktywnych sesji powiązanych z tym szablonem.");
+            messageApi.error("Failed to delete (check active sessions).");
         }
     };
 
@@ -73,69 +76,88 @@ export const MyTemplatesList: React.FC = () => {
             };
             
             const result = await surveyService.createRoom(request);
-            showSuccess("Pokój utworzony pomyślnie!");
+            messageApi.success("Room created successfully!");
             navigate(`/survey/room/${result.roomId}`);
             
         } catch (e) {
-            showError("Błąd podczas tworzenia pokoju.");
+            messageApi.error("Error creating room.");
             setIsStarting(false);
         }
     };
 
-    if (isLoading) return <CircularProgress sx={{ display: 'block', mx: 'auto', my: 4 }} />;
+    if (isLoading && forms.length === 0) return <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>;
 
     if (forms.length === 0) {
         return (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography color="text.secondary" gutterBottom>Nie masz jeszcze żadnych szablonów.</Typography>
-                <Button variant="outlined" startIcon={<AddIcon />} onClick={() => navigate('/survey/create')}>
-                    Utwórz pierwszy
+            <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="You have no survey templates."
+            >
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/survey/create')}>
+                    Create First Survey
                 </Button>
-            </Box>
+            </Empty>
         );
     }
 
     return (
-        <Box>
-            <Stack spacing={2}>
-                {forms.map((form) => (
-                    <Paper key={form.id} variant="outlined" sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Box>
-                            <Typography variant="subtitle1" fontWeight="bold">{form.title}</Typography>
-                            <Stack direction="row" spacing={1} sx={{ mt: 0.5 }} alignItems="center">
-                                <Chip 
-                                    label={form.isPrivate ? "Prywatna" : "Publiczna"} 
-                                    size="small" 
-                                    color={form.isPrivate ? "default" : "primary"} 
-                                    variant="outlined" 
+        <div>
+            {contextHolder}
+            <List
+                dataSource={forms}
+                renderItem={(form) => (
+                    <List.Item
+                        actions={[
+                            <Tooltip title="Launch New Session" key="launch">
+                                <Button 
+                                    type="text" 
+                                    icon={<PlayCircleOutlined style={{ color: '#52c41a', fontSize: 18 }} />} 
+                                    onClick={() => openStartDialog(form.id)}
                                 />
-                                <Typography variant="caption" color="text.secondary">
-                                    • {form.questionsCount} pytań • {new Date(form.createdAt).toLocaleDateString()}
-                                </Typography>
-                            </Stack>
-                        </Box>
-                        
-                        <Box>
-                            <Tooltip title="Uruchom nową sesję">
-                                <IconButton color="success" onClick={() => openStartDialog(form.id)}>
-                                    <PlayArrowIcon />
-                                </IconButton>
-                            </Tooltip>
-                            
-                            <Tooltip title="Usuń szablon">
-                                <IconButton color="error" onClick={() => handleDelete(form.id)}>
-                                    <DeleteIcon />
-                                </IconButton>
-                            </Tooltip>
-                        </Box>
-                    </Paper>
-                ))}
-            </Stack>
-            
-            {totalPages > 1 && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-                    <Pagination count={totalPages} page={page + 1} onChange={(_, v) => setPage(v - 1)} color="primary" />
-                </Box>
+                            </Tooltip>,
+                            <Popconfirm
+                                title="Delete this template?"
+                                description="You won't be able to start new sessions from it."
+                                onConfirm={() => handleDelete(form.id)}
+                                okText="Yes"
+                                cancelText="No"
+                                key="delete"
+                            >
+                                <Button type="text" danger icon={<DeleteOutlined />} />
+                            </Popconfirm>
+                        ]}
+                        style={{ 
+                            padding: '12px 16px', 
+                            borderLeft: '4px solid #1890ff',
+                            marginBottom: 12,
+                            background: '#fff',
+                            border: '1px solid #f0f0f0',
+                            borderRadius: 4
+                        }}
+                    >
+                        <List.Item.Meta
+                            title={<Text strong>{form.title}</Text>}
+                            description={
+                                <Space size={4} style={{ fontSize: 12 }}>
+                                    {form.isPrivate ? <Tag icon={<LockOutlined />}>Private</Tag> : <Tag icon={<GlobalOutlined />}>Public</Tag>}
+                                    <Text type="secondary">• {form.questionsCount} questions • {new Date(form.createdAt).toLocaleDateString()}</Text>
+                                </Space>
+                            }
+                        />
+                    </List.Item>
+                )}
+            />
+
+            {totalItems > 5 && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+                    <Pagination 
+                        current={page + 1}
+                        total={totalItems} 
+                        pageSize={5}
+                        onChange={(p) => setPage(p - 1)} 
+                        size="small"
+                    />
+                </div>
             )}
 
             <StartSurveyRoomDialog 
@@ -147,6 +169,6 @@ export const MyTemplatesList: React.FC = () => {
                 }}
                 onConfirm={handleQuickLaunch}
             />
-        </Box>
+        </div>
     );
 };

@@ -1,274 +1,307 @@
 import React, { useState } from 'react';
 import { 
-    Typography, TextField, Box, Stack, Card, CardContent, 
-    IconButton, MenuItem, Select, FormControl, InputLabel, 
-    FormControlLabel, Switch, Grid, Paper, CircularProgress
-} from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import SaveIcon from '@mui/icons-material/Save';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+    Card, Form, Input, Button, Switch, Select, 
+    Divider, Typography, Row, Col, 
+    Popconfirm, message, Collapse, Space 
+} from 'antd';
+import { 
+    PlusOutlined, 
+    SaveOutlined, 
+    ArrowLeftOutlined, 
+    DeleteOutlined, 
+    MinusCircleOutlined,
+    SettingOutlined,
+    UnorderedListOutlined
+} from '@ant-design/icons';
 
-import { Button } from '@/shared/ui/Button'; 
-
-import type { QuestionType, CreateSurveyFormRequest, SurveyFormResponse } from '../model/types';
-import { QuestionTypeValues } from '../model/types';
 import { surveyService } from '../api/surveyService'; 
+import { QuestionTypeValues } from '../model/types';
+import type { CreateSurveyFormRequest } from '../model/types';
 
-interface QuestionDraft {
-    id: number;
-    title: string;
-    type: QuestionType;
-    possibleChoices: string[]; 
-}
+const { Text } = Typography;
+const { Option } = Select;
 
 interface SurveyCreateFormProps {
     onCancel: () => void;
     onSuccess: () => void;
 }
 
+const DEFAULT_QUESTION = {
+    title: '',
+    type: QuestionTypeValues.SINGLE_CHOICE,
+    possibleChoices: ['Option 1', 'Option 2']
+};
+
 export const SurveyCreateForm: React.FC<SurveyCreateFormProps> = ({ onCancel, onSuccess }) => {
-    const [title, setTitle] = useState('');
-    const [isPrivate, setIsPrivate] = useState(false);
-    const [questions, setQuestions] = useState<QuestionDraft[]>([
-        { id: Date.now(), title: '', type: QuestionTypeValues.SINGLE_CHOICE, possibleChoices: [''] }
-    ]);
+    const [form] = Form.useForm();
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    const TITLE_MIN = 8;
-    const TITLE_MAX = 20;
-    const QUESTIONS_MAX = 20;
-    const CHOICES_MAX = 8;
+    const [messageApi, contextHolder] = message.useMessage();
     
-    const isTitleValid = title.length >= TITLE_MIN && title.length <= TITLE_MAX;
-    const hasEnoughQuestions = questions.length > 0;
+    const [activeKey, setActiveKey] = useState<string | string[]>(['0']);
 
-    const areQuestionsValid = questions.every(q => {
-        if (q.title.trim().length === 0) return false;
-        if (q.type !== QuestionTypeValues.OPEN_TEXT) {
-            return q.possibleChoices.length > 0 && q.possibleChoices.every(c => c.trim().length > 0);
-        }
-        return true; 
-    });
-
-    const isFormValid = isTitleValid && hasEnoughQuestions && areQuestionsValid && !isSubmitting;
-
-    const addQuestion = () => {
-        if (questions.length >= QUESTIONS_MAX) return; 
-        setQuestions([
-            ...questions, 
-            { id: Date.now(), title: '', type: QuestionTypeValues.SINGLE_CHOICE, possibleChoices: [''] }
-        ]);
-    };
-
-    const removeQuestion = (id: number) => {
-        if (questions.length <= 1) return; 
-        setQuestions(questions.filter(q => q.id !== id));
-    };
-
-    const updateQuestion = (id: number, field: keyof QuestionDraft, value: any) => {
-        setQuestions(questions.map(q => {
-            if (q.id === id) {
-                if (field === 'type' && value === QuestionTypeValues.OPEN_TEXT) {
-                    return { ...q, [field]: value, possibleChoices: [] };
-                }
-                if (field === 'type' && value !== QuestionTypeValues.OPEN_TEXT && q.type === QuestionTypeValues.OPEN_TEXT) {
-                     return { ...q, [field]: value, possibleChoices: [''] };
-                }
-                return { ...q, [field]: value };
-            }
-            return q;
-        }));
-    };
-
-    const addOption = (questionId: number) => {
-        setQuestions(questions.map(q => {
-            if (q.id === questionId && q.possibleChoices.length < CHOICES_MAX) { 
-                return { ...q, possibleChoices: [...q.possibleChoices, ''] };
-            }
-            return q;
-        }));
-    };
-
-    const updateOption = (questionId: number, index: number, value: string) => {
-        setQuestions(questions.map(q => {
-            if (q.id === questionId) {
-                const newChoices = [...q.possibleChoices];
-                newChoices[index] = value;
-                return { ...q, possibleChoices: newChoices };
-            }
-            return q;
-        }));
-    };
-
-    const removeOption = (questionId: number, index: number) => {
-        setQuestions(questions.map(q => {
-            if (q.id === questionId) {
-                const newChoices = q.possibleChoices.filter((_, i) => i !== index);
-                return { ...q, possibleChoices: newChoices.length > 0 ? newChoices : [''] }; 
-            }
-            return q;
-        }));
-    };
-    
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!isFormValid) {
-            alert("Validation Error: Check title length and question content.");
-            return;
-        }
-        
+    const onFinish = async (values: any) => {
         setIsSubmitting(true);
-        
-        const payload: CreateSurveyFormRequest = {
-            title: title,
-            isPrivate: isPrivate,
-            questions: questions.map(q => ({
-                title: q.title,
-                type: q.type,
-                possibleChoices: q.type === QuestionTypeValues.OPEN_TEXT ? [] : q.possibleChoices.filter(c => c.trim().length > 0)
-            }))
-        };
-
         try {
-            await surveyService.createSurveyForm(payload); 
-            
-            onSuccess(); 
+            const questions = values.questions.map((q: any) => ({
+                ...q,
+                possibleChoices: q.type === QuestionTypeValues.OPEN_TEXT 
+                    ? [] 
+                    : q.possibleChoices.filter((c: string) => c && c.trim().length > 0)
+            }));
 
+            for (let i = 0; i < questions.length; i++) {
+                const q = questions[i];
+                if (q.type !== QuestionTypeValues.OPEN_TEXT && q.possibleChoices.length < 2) {
+                    messageApi.error(`Question #${i + 1} must have at least 2 options.`);
+                    setActiveKey(String(i));
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
+            const payload: CreateSurveyFormRequest = {
+                title: values.title,
+                isPrivate: values.isPrivate || false,
+                questions: questions
+            };
+
+            await surveyService.createSurveyForm(payload);
+            messageApi.success("Survey created successfully!");
+            onSuccess();
         } catch (error) {
-            console.error("Error creating survey:", error);
-            alert("An error occurred while creating the survey.");
+            console.error(error);
+            messageApi.error("Failed to create survey.");
         } finally {
             setIsSubmitting(false);
         }
     };
 
+    const genExtra = (removeFn: (index: number | number[]) => void, name: number, length: number) => (
+        <Popconfirm 
+            title="Delete question?" 
+            onConfirm={(e) => {
+                e?.stopPropagation();
+                removeFn(name);
+            }}
+            onCancel={(e) => e?.stopPropagation()}
+        >
+            <Button 
+                type="text" 
+                danger 
+                icon={<DeleteOutlined />} 
+                disabled={length <= 1}
+                onClick={(e) => e.stopPropagation()} 
+            />
+        </Popconfirm>
+    );
+
     return (
-        <Card component={Paper} elevation={6} sx={{ p: 4 }}>
-            <CardContent>
-                <form onSubmit={handleSubmit}>
-                    <Stack spacing={4}>
-                        
-                        <Box>
-                            <Typography variant="h6" gutterBottom>Basic Info</Typography>
-                            <Stack spacing={2}>
-                                <TextField
-                                    fullWidth
-                                    label={`Title (${TITLE_MIN}-${TITLE_MAX} chars)`}
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                    required
-                                    error={title.length > 0 && !isTitleValid}
-                                    helperText={title.length > 0 && !isTitleValid ? "Invalid title length" : ""}
-                                />
-                                <FormControlLabel
-                                    control={<Switch checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} />}
-                                    label={isPrivate ? "Private" : "Public"}
-                                />
-                            </Stack>
-                        </Box>
+        <Card style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+            {contextHolder}
+            <Form
+                form={form}
+                layout="vertical"
+                onFinish={onFinish}
+                initialValues={{
+                    title: '',
+                    isPrivate: false,
+                    questions: [DEFAULT_QUESTION]
+                }}
+            >
+                <Row gutter={24}>
+                    <Col xs={24} md={16}>
+                        <Form.Item
+                            name="title"
+                            label="Survey Title"
+                            rules={[
+                                { required: true, message: 'Please enter a title' },
+                                { min: 8, message: 'Min 8 characters' },
+                                { max: 20, message: 'Max 20 characters' }
+                            ]}
+                        >
+                            <Input placeholder="e.g. Employee Satisfaction Survey" size="large" />
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                        <Form.Item name="isPrivate" label="Visibility" valuePropName="checked">
+                            <Switch checkedChildren="Private" unCheckedChildren="Public" />
+                        </Form.Item>
+                    </Col>
+                </Row>
 
-                        <Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                                <Typography variant="h5">Questions ({questions.length}/{QUESTIONS_MAX})</Typography>
-                                <Button 
-                                    variant="outlined" 
-                                    startIcon={<AddCircleOutlineIcon />}
-                                    onClick={addQuestion}
-                                    disabled={questions.length >= QUESTIONS_MAX}
-                                >
-                                    Add
-                                </Button>
-                            </Box>
+                <Divider orientation="left" style={{ borderColor: '#d9d9d9' }}>Questions</Divider>
 
-                            <Stack spacing={3}>
-                                {questions.map((q, qIndex) => (
-                                    <Card key={q.id} variant="outlined" sx={{ position: 'relative', borderLeft: '4px solid #1976d2' }}>
-                                        <CardContent>
-                                            <Grid container spacing={2}>
-                                                <Grid size={{ xs: 12, md: 8 }}>
-                                                    <TextField
-                                                        fullWidth
-                                                        label={`Question #${qIndex + 1}`}
-                                                        value={q.title}
-                                                        onChange={(e) => updateQuestion(q.id, 'title', e.target.value)}
-                                                        required
-                                                        error={q.title.trim().length === 0}
-                                                    />
-                                                </Grid>
-                                                <Grid size={{ xs: 12, md: 4 }}>
-                                                    <FormControl fullWidth>
-                                                        <InputLabel>Type</InputLabel>
-                                                        <Select
-                                                            value={q.type}
-                                                            label="Type"
-                                                            onChange={(e) => updateQuestion(q.id, 'type', e.target.value as QuestionType)}
-                                                        >
-                                                            <MenuItem value={QuestionTypeValues.SINGLE_CHOICE}>Single Choice</MenuItem>
-                                                            <MenuItem value={QuestionTypeValues.MULTIPLE_CHOICE}>Multiple Choice</MenuItem>
-                                                            <MenuItem value={QuestionTypeValues.OPEN_TEXT}>Text</MenuItem>
-                                                        </Select>
-                                                    </FormControl>
-                                                </Grid>
-                                            </Grid>
-
-                                            {q.type !== QuestionTypeValues.OPEN_TEXT && (
-                                                <Box sx={{ mt: 2, ml: 2 }}>
-                                                    <Stack spacing={1}>
-                                                        {q.possibleChoices.map((choice, cIndex) => (
-                                                            <Box key={cIndex} sx={{ display: 'flex', gap: 1 }}>
-                                                                <TextField 
-                                                                    size="small" fullWidth
-                                                                    placeholder={`Option ${cIndex + 1}`}
-                                                                    value={choice}
-                                                                    onChange={(e) => updateOption(q.id, cIndex, e.target.value)}
-                                                                />
-                                                                <IconButton 
-                                                                    size="small" onClick={() => removeOption(q.id, cIndex)}
-                                                                    disabled={q.possibleChoices.length <= 1}
-                                                                >
-                                                                    <DeleteIcon />
-                                                                </IconButton>
-                                                            </Box>
-                                                        ))}
-                                                        {q.possibleChoices.length < CHOICES_MAX && (
-                                                            <Button size="small" onClick={() => addOption(q.id)}>+ Option</Button>
-                                                        )}
-                                                    </Stack>
-                                                </Box>
-                                            )}
-                                        </CardContent>
-                                        {questions.length > 1 && (
-                                            <IconButton 
-                                                onClick={() => removeQuestion(q.id)}
-                                                sx={{ position: 'absolute', top: 5, right: 5 }}
-                                            >
-                                                <DeleteIcon />
-                                            </IconButton>
-                                        )}
-                                    </Card>
-                                ))}
-                            </Stack>
-                            {!hasEnoughQuestions && <Typography color="error">Add at least one question.</Typography>}
-                        </Box>
-
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 2 }}>
-                            <Button variant="outlined" onClick={onCancel} startIcon={<ArrowBackIcon />}>
-                                Cancel
-                            </Button>
-                            <Button 
-                                type="submit" 
-                                variant="contained" 
-                                disabled={!isFormValid || isSubmitting} 
-                                startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+                <Form.List name="questions">
+                    {(fields, { add, remove }) => (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            
+                            <Collapse 
+                                accordion
+                                activeKey={activeKey}
+                                onChange={(key) => setActiveKey(key)}
+                                style={{ background: 'transparent', border: 'none' }}
                             >
-                                {isSubmitting ? 'Saving...' : 'Save Survey'}
+                                {fields.map((field, index) => (
+                                    <Collapse.Panel
+                                        key={String(index)}
+                                        header={
+                                            <Space>
+                                                <SettingOutlined style={{ color: '#1890ff' }} />
+                                                <Text strong>Question #{index + 1}</Text>
+                                                
+                                                <Form.Item
+                                                    shouldUpdate={(prev, curr) => 
+                                                        prev.questions?.[index]?.title !== curr.questions?.[index]?.title
+                                                    }
+                                                    noStyle
+                                                >
+                                                    {({ getFieldValue }) => {
+                                                        const title = getFieldValue(['questions', index, 'title']);
+                                                        return title ? <Text type="secondary" style={{ fontWeight: 'normal', marginLeft: 8 }}>— {title}</Text> : null;
+                                                    }}
+                                                </Form.Item>
+                                            </Space>
+                                        }
+                                        extra={genExtra(remove, field.name, fields.length)}
+                                        style={{ 
+                                            marginBottom: 12, 
+                                            background: '#fff', 
+                                            border: '1px solid #f0f0f0',
+                                            borderRadius: 8,
+                                            overflow: 'hidden'
+                                        }}
+                                    >
+                                        <div style={{ padding: '8px 0' }}>
+                                            <Row gutter={16}>
+                                                <Col xs={24} md={16}>
+                                                    <Form.Item
+                                                        {...field}
+                                                        name={[field.name, 'title']}
+                                                        label="Question Text"
+                                                        rules={[{ required: true, message: 'Question text is required' }]}
+                                                    >
+                                                        <Input placeholder="Type your question here..." />
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col xs={24} md={8}>
+                                                    <Form.Item
+                                                        {...field}
+                                                        name={[field.name, 'type']}
+                                                        label="Response Type"
+                                                        rules={[{ required: true }]}
+                                                    >
+                                                        <Select>
+                                                            <Option value={QuestionTypeValues.SINGLE_CHOICE}>Single Choice</Option>
+                                                            <Option value={QuestionTypeValues.MULTIPLE_CHOICE}>Multiple Choice</Option>
+                                                            <Option value={QuestionTypeValues.OPEN_TEXT}>Open Text</Option>
+                                                        </Select>
+                                                    </Form.Item>
+                                                </Col>
+                                            </Row>
+
+                                            <Form.Item
+                                                noStyle
+                                                shouldUpdate={(prev, curr) => 
+                                                    prev.questions?.[index]?.type !== curr.questions?.[index]?.type
+                                                }
+                                            >
+                                                {({ getFieldValue }) => {
+                                                    const type = getFieldValue(['questions', index, 'type']);
+                                                    
+                                                    if (type === QuestionTypeValues.OPEN_TEXT) {
+                                                        return (
+                                                            <div style={{ padding: '16px', background: '#fafafa', borderRadius: 4, textAlign: 'center', color: '#999' }}>
+                                                                Respondents will type their answer in a text box.
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    return (
+                                                        <>
+                                                            <Text type="secondary" style={{ display: 'block', marginBottom: 8, fontSize: 13 }}>
+                                                                Answer Options:
+                                                            </Text>
+                                                            <Form.List name={[field.name, 'possibleChoices']}>
+                                                                {(optFields, { add: addOpt, remove: removeOpt }) => (
+                                                                    <>
+                                                                        {optFields.map((optField, optIndex) => (
+                                                                            <div key={optField.key} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                                                                                <UnorderedListOutlined style={{ color: '#ccc' }} />
+                                                                                <Form.Item
+                                                                                    {...optField}
+                                                                                    rules={[{ required: true, message: "Required" }]}
+                                                                                    style={{ flex: 1, margin: 0 }}
+                                                                                >
+                                                                                    <Input placeholder={`Option ${optIndex + 1}`} />
+                                                                                </Form.Item>
+                                                                                
+                                                                                {optFields.length > 2 && (
+                                                                                    <MinusCircleOutlined 
+                                                                                        onClick={() => removeOpt(optField.name)}
+                                                                                        style={{ color: '#ff4d4f', cursor: 'pointer' }}
+                                                                                    />
+                                                                                )}
+                                                                            </div>
+                                                                        ))}
+                                                                        
+                                                                        {optFields.length < 8 && (
+                                                                            <Button 
+                                                                                type="dashed" 
+                                                                                onClick={() => addOpt('')} 
+                                                                                block 
+                                                                                icon={<PlusOutlined />}
+                                                                                style={{ marginTop: 8 }}
+                                                                            >
+                                                                                Add Option
+                                                                            </Button>
+                                                                        )}
+                                                                    </>
+                                                                )}
+                                                            </Form.List>
+                                                        </>
+                                                    );
+                                                }}
+                                            </Form.Item>
+                                        </div>
+                                    </Collapse.Panel>
+                                ))}
+                            </Collapse>
+
+                            <Button 
+                                type="dashed" 
+                                onClick={() => {
+                                    add(DEFAULT_QUESTION);
+                                    setActiveKey(String(fields.length));
+                                }} 
+                                block 
+                                size="large"
+                                icon={<PlusOutlined />}
+                                disabled={fields.length >= 20}
+                                style={{ height: 50 }}
+                            >
+                                Add New Question
                             </Button>
-                        </Box>
-                    </Stack>
-                </form>
-            </CardContent>
+                        </div>
+                    )}
+                </Form.List>
+
+                <Divider />
+\
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 16 }}>
+                    <Button onClick={onCancel} icon={<ArrowLeftOutlined />} size="large">
+                        Cancel
+                    </Button>
+                    <Button 
+                        type="primary" 
+                        htmlType="submit" 
+                        loading={isSubmitting} 
+                        icon={<SaveOutlined />}
+                        size="large"
+                    >
+                        Create Survey
+                    </Button>
+                </div>
+            </Form>
         </Card>
     );
 };

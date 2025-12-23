@@ -1,7 +1,8 @@
 import React from 'react';
-import { Dialog, DialogContent, DialogTitle, IconButton, Typography, Box } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
+import { Modal, Typography } from 'antd';
 import { SurveyFormList } from './SurveyFormList'; 
+
+const { Title } = Typography;
 
 interface AllTemplatesDialogProps {
     open: boolean;
@@ -10,31 +11,22 @@ interface AllTemplatesDialogProps {
 
 export const AllFormsDialog: React.FC<AllTemplatesDialogProps> = ({ open, onClose }) => {
     return (
-        <Dialog 
-            open={open} 
-            onClose={onClose} 
-            maxWidth="md" 
-            fullWidth
-            scroll="paper"
-            PaperProps={{
-                sx: {
-                    maxHeight: '80vh', 
-                    minHeight: '50vh'
-                }
+        <Modal
+            title={<Title level={4} style={{ margin: 0 }}>All Survey Templates</Title>}
+            open={open}
+            onCancel={onClose}
+            width={800}
+            footer={null}
+            centered
+            bodyStyle={{ 
+                padding: 0, 
+                maxHeight: '70vh', 
+                overflowY: 'auto' 
             }}
         >
-            <DialogTitle component="div" sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h6" component="h2">
-                    Wszystkie Szablony
-                </Typography>
-                <IconButton aria-label="close" onClick={onClose}>
-                    <CloseIcon />
-                </IconButton>
-            </DialogTitle>
-            
-            <DialogContent dividers>
+            <div style={{ padding: 24 }}>
                 <SurveyFormList />
-            </DialogContent>
-        </Dialog>
+            </div>
+        </Modal>
     );
 };

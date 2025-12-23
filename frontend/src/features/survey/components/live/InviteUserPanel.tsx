@@ -1,29 +1,29 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
-    Card, 
-    Typography, 
-    Divider, 
-    Button, 
-    Tooltip, 
-    AutoComplete, 
-    Input, 
-    Tag, 
-    message, 
-    Space, 
-    List, 
-    theme 
+  Card, 
+  Typography, 
+  Divider, 
+  Button, 
+  Tooltip, 
+  AutoComplete, 
+  Input,
+  Tag,
+  message, 
+  Space, 
+  List,
+  theme
 } from 'antd';
 import { 
-    CopyOutlined, 
-    SendOutlined, 
-    UserAddOutlined, 
-    SearchOutlined 
+  CopyOutlined, 
+  SendOutlined, 
+  UserAddOutlined, 
+  SearchOutlined
 } from '@ant-design/icons';
+import debounce from 'lodash/debounce'; 
 
-import { quizService } from '../../api/quizService'; 
+import { surveyService } from '@/features/survey/api/surveyService';
 import { userService } from '@/features/user/api/userService';
 import type { UserSummary } from '@/features/user/model/types';
-import { useDebounce } from '@/shared/hooks/useDebounce';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -32,10 +32,10 @@ interface InviteUsersPanelProps {
 }
 
 interface AutoCompleteOption {
-    value: string;
-    id: string;
+    value: string; 
+    id: string;    
     user: UserSummary;
-    label: string;
+    label: React.ReactNode; 
 }
 
 export const InviteUsersPanel: React.FC<InviteUsersPanelProps> = ({ roomId }) => {
@@ -43,65 +43,57 @@ export const InviteUsersPanel: React.FC<InviteUsersPanelProps> = ({ roomId }) =>
     const [messageApi, contextHolder] = message.useMessage();
 
     const [options, setOptions] = useState<AutoCompleteOption[]>([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const debouncedSearch = useDebounce(searchTerm, 500);
+    const [searchValue, setSearchValue] = useState('');
     const [isSearching, setIsSearching] = useState(false);
-
-    const [selectedUsers, setSelectedUsers] = useState<UserSummary[]>([]);
     
+    const [selectedUsers, setSelectedUsers] = useState<UserSummary[]>([]);
     const [generatedLinks, setGeneratedLinks] = useState<Record<string, string> | null>(null);
     const [isSending, setIsSending] = useState(false);
 
-    useEffect(() => {
-        let active = true;
+    const fetchUsers = useMemo(
+        () =>
+            debounce(async (input: string) => {
+                if (!input) {
+                    setOptions([]);
+                    setIsSearching(false);
+                    return;
+                }
 
-        const fetchUsers = async () => {
-            if (!debouncedSearch.trim()) {
-                setOptions([]);
-                setIsSearching(false);
-                return;
-            }
-
-            setIsSearching(true);
-            try {
-                const results = await userService.searchUsers(debouncedSearch);
-                if (active) {
+                try {
+                    const results = await userService.searchUsers(input);
+                    
                     const mappedOptions = results.map((u) => ({
                         value: u.username,
                         id: u.id,
                         user: u,
-                        label: u.username,
+                        label: u.username, 
                     }));
                     setOptions(mappedOptions);
-                }
-            } catch (e) {
-                if (active) {
+                } catch (e) {
                     setOptions([]);
-                }
-            } finally {
-                if (active) {
+                } finally {
                     setIsSearching(false);
                 }
-            }
-        };
+            }, 500),
+        []
+    );
 
-        fetchUsers();
-
-        return () => {
-            active = false;
-        };
-    }, [debouncedSearch]);
+    const handleSearch = (value: string) => {
+        setSearchValue(value);
+        setIsSearching(true);
+        fetchUsers(value);
+    };
 
     const handleSelect = (value: string, option: AutoCompleteOption) => {
         if (selectedUsers.some(u => u.id === option.id)) {
             messageApi.warning('This user is already added.');
-            setSearchTerm('');
+            setSearchValue(''); 
             return;
         }
 
         setSelectedUsers(prev => [...prev, option.user]);
-        setSearchTerm('');
-        setOptions([]);
+        setSearchValue(''); 
+        setOptions([]); 
     };
 
     const handleRemoveUser = (userId: string) => {
@@ -115,14 +107,13 @@ export const InviteUsersPanel: React.FC<InviteUsersPanelProps> = ({ roomId }) =>
 
         setIsSending(true);
         try {
-            const tokensMap = await quizService.generateInvites(roomId, ids);
-            
+            const tokensMap = await surveyService.generateInvites(roomId, ids);
             setGeneratedLinks(tokensMap);
-            messageApi.success(`Invites sent to ${ids.length} users!`);
+            messageApi.success(`Invitations sent to ${ids.length} users!`);
             setSelectedUsers([]); 
         } catch (error) {
             console.error(error);
-            messageApi.error("Failed to send invites.");
+            messageApi.error("Failed to send invitations.");
         } finally {
             setIsSending(false);
         }
@@ -130,10 +121,10 @@ export const InviteUsersPanel: React.FC<InviteUsersPanelProps> = ({ roomId }) =>
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        messageApi.success("Link copied!");
+        messageApi.success("Link copied to clipboard!");
     };
 
-    const joinBaseUrl = `${window.location.origin}/quiz/join/${roomId}`;
+    const joinBaseUrl = `${window.location.origin}/survey/join/${roomId}`;
 
     return (
         <>
@@ -148,7 +139,7 @@ export const InviteUsersPanel: React.FC<InviteUsersPanelProps> = ({ roomId }) =>
                 </div>
                 
                 <Paragraph type="secondary" style={{ marginBottom: 24 }}>
-                    Search users to send invitations and generate unique ticket links.
+                    Search for users by username to generate invitation tickets.
                 </Paragraph>
 
                 <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -157,9 +148,9 @@ export const InviteUsersPanel: React.FC<InviteUsersPanelProps> = ({ roomId }) =>
                         <AutoComplete
                             options={options}
                             style={{ width: '100%' }}
-                            onSearch={setSearchTerm}
+                            onSearch={handleSearch}
                             onSelect={handleSelect}
-                            value={searchTerm}
+                            value={searchValue}
                             notFoundContent={isSearching ? "Searching..." : null}
                             backfill={true}
                         >
@@ -210,7 +201,7 @@ export const InviteUsersPanel: React.FC<InviteUsersPanelProps> = ({ roomId }) =>
                     {generatedLinks && (
                         <div style={{ marginTop: 16 }}>
                             <Divider orientation="left" style={{ margin: '12px 0' }}>
-                                <Text type="secondary" style={{ fontSize: 13 }}>Generated Links</Text>
+                                <Text type="secondary" style={{ fontSize: 13 }}>Invitation Links</Text>
                             </Divider>
                             
                             <List
@@ -230,11 +221,12 @@ export const InviteUsersPanel: React.FC<InviteUsersPanelProps> = ({ roomId }) =>
                                             marginBottom: 8
                                         }}>
                                             <div style={{ overflow: 'hidden', marginRight: 16 }}>
-                                                <Text type="secondary" ellipsis style={{ maxWidth: 350, color: token.colorLink }}>
+                                                <Tag>User</Tag> 
+                                                <Text type="secondary" ellipsis style={{ maxWidth: 300 }}>
                                                     {fullLink}
                                                 </Text>
                                             </div>
-                                            <Tooltip title="Copy Link">
+                                            <Tooltip title="Copy link">
                                                 <Button 
                                                     type="text" 
                                                     icon={<CopyOutlined />} 

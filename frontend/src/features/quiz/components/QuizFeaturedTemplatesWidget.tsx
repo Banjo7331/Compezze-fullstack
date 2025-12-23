@@ -85,7 +85,7 @@ export const QuizFeaturedTemplatesWidget: React.FC = () => {
                 bodyStyle={{ padding: 32 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
-                    <ThunderboltOutlined style={{ marginRight: 12, fontSize: 24, color: '#fa8c16' }} />
+                    <ThunderboltOutlined style={{ marginRight: 12, fontSize: 24, color: '#1a9b0eff' }} />
                     <Title level={4} style={{ margin: 0 }}>Quick Play</Title>
                 </div>
                 

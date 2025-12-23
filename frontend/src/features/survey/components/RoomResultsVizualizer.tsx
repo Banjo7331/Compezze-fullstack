@@ -1,31 +1,50 @@
 import React, { useState } from 'react';
 import { 
-    Box, Typography, Card, CardContent, Divider, Stack, Paper, IconButton, Grid, Alert
-} from '@mui/material';
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+    Card, Typography, Row, Col, Divider, 
+    Button, Alert, Empty 
+} from 'antd';
+import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { 
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell 
 } from 'recharts';
 import type { FinalRoomResultDto, QuestionResultDto } from '../model/socket.types';
 import type { QuestionType as RestQuestionType } from '../model/types';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658'];
+const { Text } = Typography;
+const COLORS = ['#1890ff', '#52c41a', '#fa8c16', '#eb2f96', '#722ed1', '#13c2c2', '#fadb14'];
 
 const OpenTextVisualizer: React.FC<{ answers: string[] }> = ({ answers }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
-    if (!answers || answers.length === 0) return <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 4 }}>Brak odpowiedzi tekstowych.</Typography>;
+
+    if (!answers || answers.length === 0) {
+        return <div style={{ padding: 20, textAlign: 'center', color: '#999' }}>No text answers submitted.</div>;
+    }
+
+    const handleNext = () => setCurrentIndex((prev) => (prev + 1) % answers.length);
+    const handlePrev = () => setCurrentIndex((prev) => (prev - 1 + answers.length) % answers.length);
+
     return (
-        <Box sx={{ width: '100%', textAlign: 'center' }}>
-            <Paper elevation={0} variant="outlined" sx={{ p: 3, minHeight: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f8f9fa', borderRadius: 2, mb: 1 }}>
-                <Typography variant="body1" sx={{ fontStyle: 'italic' }}>"{answers[currentIndex]}"</Typography>
-            </Paper>
-            <Stack direction="row" spacing={2} alignItems="center" justifyContent="center">
-                <IconButton onClick={() => setCurrentIndex((prev) => (prev - 1 + answers.length) % answers.length)} disabled={answers.length <= 1}><ArrowBackIosNewIcon fontSize="small" /></IconButton>
-                <Typography variant="caption" color="text.secondary">{currentIndex + 1} z {answers.length}</Typography>
-                <IconButton onClick={() => setCurrentIndex((prev) => (prev + 1) % answers.length)} disabled={answers.length <= 1}><ArrowForwardIosIcon fontSize="small" /></IconButton>
-            </Stack>
-        </Box>
+        <div style={{ textAlign: 'center' }}>
+            <div style={{ 
+                background: '#fafafa', 
+                padding: 24, 
+                borderRadius: 8, 
+                border: '1px solid #f0f0f0',
+                minHeight: 100,
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                marginBottom: 16
+            }}>
+                <Text style={{ fontSize: 16, fontStyle: 'italic' }}>"{answers[currentIndex]}"</Text>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
+                <Button icon={<LeftOutlined />} onClick={handlePrev} disabled={answers.length <= 1} />
+                <Text type="secondary">{currentIndex + 1} of {answers.length}</Text>
+                <Button icon={<RightOutlined />} onClick={handleNext} disabled={answers.length <= 1} />
+            </div>
+        </div>
     );
 };
 
@@ -34,19 +53,28 @@ const QuestionVisualization: React.FC<{ result: QuestionResultDto }> = ({ result
     if (questionType === 'OPEN_TEXT') return <OpenTextVisualizer answers={result.openAnswers || []} />;
 
     const counts = result.answerCounts || {};
-    const chartData = Object.entries(counts).map(([option, count]) => ({ name: option, count })).sort((a, b) => b.count - a.count);
+    const chartData = Object.entries(counts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
 
-    if (chartData.length === 0) return <Typography variant="body2" align="center" sx={{ py: 5 }} color="text.secondary">Brak głosów.</Typography>;
+    if (chartData.length === 0) {
+        return <div style={{ padding: 40, textAlign: 'center', color: '#999' }}>No votes recorded.</div>;
+    }
 
     return (
         <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" interval={0} angle={-15} textAnchor="end" height={60} tick={{fontSize: 12}} />
+                <XAxis dataKey="name" interval={0} height={60} tick={{fontSize: 12}} />
                 <YAxis allowDecimals={false} />
-                <Tooltip cursor={{fill: 'transparent'}} />
+                <Tooltip 
+                    cursor={{fill: 'transparent'}}
+                    contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}
+                />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                    {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                    {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
                 </Bar>
             </BarChart>
         </ResponsiveContainer>
@@ -61,24 +89,22 @@ export const RoomResultsVisualizer: React.FC<ResultsVisualizerProps> = ({ result
     const displayResults = results.results || [];
 
     if (displayResults.length === 0) {
-        return <Alert severity="info">Brak danych do wyświetlenia.</Alert>;
+        return <Empty description="No results to display." image={Empty.PRESENTED_IMAGE_SIMPLE} />;
     }
 
     return (
-        <Grid container spacing={3}>
+        <Row gutter={[24, 24]}>
             {displayResults.map((result, index) => (
-                <Grid size={{ xs: 12 }} key={result.questionId}>
-                    <Card variant="outlined" sx={{ borderRadius: 3 }}>
-                        <CardContent>
-                            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                                {index + 1}. {result.title}
-                            </Typography>
-                            <Divider sx={{ mb: 2 }} />
-                            <QuestionVisualization result={result} />
-                        </CardContent>
+                <Col span={24} key={result.questionId}>
+                    <Card 
+                        title={`${index + 1}. ${result.title}`}
+                        type="inner"
+                        bordered={true}
+                    >
+                        <QuestionVisualization result={result} />
                     </Card>
-                </Grid>
+                </Col>
             ))}
-        </Grid>
+        </Row>
     );
 };

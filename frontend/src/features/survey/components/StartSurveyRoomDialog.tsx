@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { 
-    Dialog, DialogTitle, DialogContent, DialogActions, 
-    TextField, Button, Stack, Typography, Box
-} from '@mui/material';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import React, { useEffect } from 'react';
+import { Modal, Form, InputNumber, Button, Typography, Space } from 'antd';
+import { PlayCircleOutlined, ClockCircleOutlined, TeamOutlined } from '@ant-design/icons';
+
+const { Text } = Typography;
 
 interface StartRoomDialogProps {
     open: boolean;
@@ -12,119 +11,102 @@ interface StartRoomDialogProps {
     isLoading?: boolean;
 }
 
-export const StartSurveyRoomDialog: React.FC<StartRoomDialogProps> = ({ open, onClose, onConfirm, isLoading }) => {
-    const [duration, setDuration] = useState<string>('15');
-    const [maxParticipants, setMaxParticipants] = useState<string>('100');
+interface FormValues {
+    duration: number;
+    maxParticipants: number;
+}
 
-    const [durationError, setDurationError] = useState<string | null>(null);
-    const [participantsError, setParticipantsError] = useState<string | null>(null);
+export const StartSurveyRoomDialog: React.FC<StartRoomDialogProps> = ({ 
+    open, onClose, onConfirm, isLoading 
+}) => {
+    const [form] = Form.useForm<FormValues>();
 
     useEffect(() => {
         if (open) {
-            setDuration('90');
-            setMaxParticipants('100');
-            setDurationError(null);
-            setParticipantsError(null);
+            form.resetFields();
         }
-    }, [open]);
+    }, [open, form]);
 
-    const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
-        setDuration(val);
-
-        const num = Number(val);
-        if (!val) {
-            setDurationError("Pole wymagane");
-        } else if (isNaN(num) || num < 1) {
-            setDurationError("Minimum 1 minuta");
-        } else if (num > 90) {
-            setDurationError("Maksymalnie 90 minut");
-        } else {
-            setDurationError(null);
-        }
+    const handleOk = () => {
+        form.validateFields()
+            .then((values) => {
+                onConfirm(values);
+            })
+            .catch((info) => {
+                console.log('Validate Failed:', info);
+            });
     };
-
-    const handleParticipantsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
-        setMaxParticipants(val);
-
-        const num = Number(val);
-        if (!val) {
-            setParticipantsError("Pole wymagane");
-        } else if (isNaN(num) || num < 1) {
-            setParticipantsError("Minimum 1 uczestnik");
-        } else if (num > 1000) {
-            setParticipantsError("Maksymalnie 1000 uczestników (limit serwera)");
-        } else {
-            setParticipantsError(null); 
-        }
-    };
-
-    const handleSubmit = () => {
-        if (durationError || participantsError || !duration || !maxParticipants) return;
-
-        onConfirm({ 
-            duration: Number(duration), 
-            maxParticipants: Number(maxParticipants) 
-        });
-    };
-
-    const isValid = !durationError && !participantsError && duration !== '' && maxParticipants !== '';
 
     return (
-        <Dialog open={open} onClose={!isLoading ? onClose : undefined} maxWidth="sm" fullWidth>
-            <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <PlayArrowIcon color="success" />
-                Uruchom Nową Sesję
-            </DialogTitle>
-            
-            <DialogContent dividers>
-                <Stack spacing={3} sx={{ mt: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
-                        Skonfiguruj parametry pokoju. Po uruchomieniu sesja będzie aktywna przez określony czas.
-                    </Typography>
+        <Modal
+            title={
+                <Space>
+                    <PlayCircleOutlined style={{ color: '#52c41a' }} />
+                    <span>Start New Session</span>
+                </Space>
+            }
+            open={open}
+            onCancel={!isLoading ? onClose : undefined}
+            onOk={handleOk}
+            confirmLoading={isLoading}
+            okText="Launch Session"
+            okButtonProps={{ 
+                type: 'primary', 
+                style: { backgroundColor: '#52c41a', borderColor: '#52c41a' }
+            }}
+            cancelText="Cancel"
+            width={500}
+            centered
+        >
+            <div style={{ marginBottom: 24 }}>
+                <Text type="secondary">
+                    Configure room parameters. The session will be active for the specified duration.
+                </Text>
+            </div>
 
-                    <TextField
-                        label="Czas trwania (minuty)"
-                        type="number"
-                        fullWidth
-                        value={duration}
-                        onChange={handleDurationChange}
-                        
-                        error={!!durationError}
-                        helperText={durationError || "Domyślnie 90 minut. Po tym czasie pokój zostanie zamknięty."}
-                        
-                        InputProps={{ inputProps: { min: 1, max: 90 } }}
-                    />
-
-                    <TextField
-                        label="Limit uczestników"
-                        type="number"
-                        fullWidth
-                        value={maxParticipants}
-                        onChange={handleParticipantsChange}
-                        
-                        error={!!participantsError}
-                        helperText={participantsError || "Maksymalna liczba osób, które mogą dołączyć (max 1000)."}
-                        
-                        InputProps={{ inputProps: { min: 1, max: 1000 } }}
-                    />
-                </Stack>
-            </DialogContent>
-
-            <DialogActions sx={{ p: 2 }}>
-                <Button onClick={onClose} disabled={isLoading} color="inherit">
-                    Anuluj
-                </Button>
-                <Button 
-                    onClick={handleSubmit} 
-                    variant="contained" 
-                    color="success"
-                    disabled={isLoading || !isValid}
+            <Form
+                form={form}
+                layout="vertical"
+                initialValues={{
+                    duration: 15,
+                    maxParticipants: 100
+                }}
+            >
+                <Form.Item
+                    name="duration"
+                    label="Duration (minutes)"
+                    tooltip="How long the survey will be accepting responses?"
+                    rules={[
+                        { required: true, message: 'Required' },
+                        { type: 'number', min: 1, message: 'Min 1 minute' },
+                        { type: 'number', max: 90, message: 'Max 90 minutes' }
+                    ]}
                 >
-                    {isLoading ? "Uruchamianie..." : "Start"}
-                </Button>
-            </DialogActions>
-        </Dialog>
+                    <InputNumber 
+                        style={{ width: '100%' }} 
+                        addonBefore={<ClockCircleOutlined />}
+                        min={1} 
+                        max={90} 
+                    />
+                </Form.Item>
+
+                <Form.Item
+                    name="maxParticipants"
+                    label="Participant Limit"
+                    rules={[
+                        { required: true, message: 'Required' },
+                        { type: 'number', min: 1, message: 'Min 1 participant' },
+                        { type: 'number', max: 1000, message: 'Max 1000 participants' }
+                    ]}
+                >
+                    <InputNumber 
+                        style={{ width: '100%' }} 
+                        addonBefore={<TeamOutlined />}
+                        min={1} 
+                        max={1000} 
+                    />
+                </Form.Item>
+            </Form>
+        </Modal>
     );
 };

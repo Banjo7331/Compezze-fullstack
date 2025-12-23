@@ -1,8 +1,11 @@
 import React from 'react';
-import { Container, Typography, Box } from '@mui/material';
+import { Typography, Layout } from 'antd';
 import { useNavigate } from 'react-router-dom';
 
 import { SurveyCreateForm } from '@/features/survey/components/SurveyCreateForm'; 
+
+const { Content } = Layout;
+const { Title } = Typography;
 
 const SurveyCreatePage: React.FC = () => {
   const navigate = useNavigate();
@@ -16,19 +19,18 @@ const SurveyCreatePage: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="md">
-      <Box sx={{ my: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center">
-          Utwórz Nową Ankietę
-        </Typography>
-        
-        <SurveyCreateForm 
-            onCancel={handleCancel} 
-            onSuccess={handleFormCreated}
-        />
-        
-      </Box>
-    </Container>
+    <Layout style={{ minHeight: '100vh', background: '#f0f2f5' }}>
+        <Content style={{ padding: '24px', maxWidth: 1000, margin: '0 auto', width: '100%' }}>
+            <div style={{ marginBottom: 24, textAlign: 'center' }}>
+                <Title level={2}>Create New Survey</Title>
+            </div>
+            
+            <SurveyCreateForm 
+                onCancel={handleCancel} 
+                onSuccess={handleFormCreated}
+            />
+        </Content>
+    </Layout>
   );
 };
 
