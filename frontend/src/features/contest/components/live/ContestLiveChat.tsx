@@ -15,7 +15,7 @@ import WifiOffIcon from '@mui/icons-material/WifiOff';
 
 import { useAuth } from '@/features/auth/AuthContext';
 import { contestSocket } from '@/features/contest/api/contestSocket';
-import type { ChatSocketMessage } from '../model/socket.types';
+import type { ChatSocketMessage } from '@/features/contest/model/socket.types';
 
 interface ContestLiveChatProps {
   contestId: string;
@@ -105,29 +105,26 @@ export const ContestLiveChat: React.FC<ContestLiveChatProps> = ({ contestId }) =
             overflow: 'hidden' 
         }}
     >
-        {/* Header */}
         <Box sx={{ p: 2, borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-            <Typography variant="subtitle2" fontWeight="bold" color="primary">Czat na żywo</Typography>
+            <Typography variant="subtitle2" fontWeight="bold" color="primary">Chat</Typography>
             {!isConnectionReady && (
                 <Typography variant="caption" color="error" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <WifiOffIcon fontSize="small" /> Łączenie...
+                    <WifiOffIcon fontSize="small" /> Connecting...
                 </Typography>
             )}
         </Box>
 
-        {/* Body */}
         <Box sx={{ 
             flexGrow: 1, 
-            height: 0, // Hack Flexboxa
+            height: 0,
             overflow: 'hidden' 
         }}>
             <MainContainer responsive>
                 <ChatContainer>
                     <MessageList 
-                        // 3. Dodajemy typingIndicator do MessageList
-                        typingIndicator={isTyping ? <TypingIndicator content={typingInfo || "Ktoś pisze..."} /> : null}
+                        typingIndicator={isTyping ? <TypingIndicator content={typingInfo || "Someone is typing..."} /> : null}
                     >
-                        <MessageSeparator content="Witamy!" />
+                        <MessageSeparator content="Welcome!" />
                         
                         {messages.map((msg) => (
                             <Message key={msg.id} model={{
@@ -149,7 +146,7 @@ export const ContestLiveChat: React.FC<ContestLiveChatProps> = ({ contestId }) =
                     </MessageList>
                     
                     <MessageInput 
-                        placeholder={isConnectionReady ? "Napisz coś..." : "Łączenie..."}
+                        placeholder={isConnectionReady ? "Type some message ..." : "Connecting..."}
                         onSend={handleSend} 
                         attachButton={false} 
                         disabled={!isConnectionReady} 
