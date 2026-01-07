@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Spin, Result, Button, message } from 'antd';
+import { Spin, Result, Button } from 'antd';
 
 import { contestService } from '@/features/contest/api/contestService';
 import type { ContestDetailsDto } from '@/features/contest/model/types';
@@ -40,11 +40,12 @@ const ContestDetailsPage: React.FC = () => {
   const handleJoin = async () => {
     setIsProcessing(true);
     try {
-      await contestService.joinContest(contestId!);
+      await contestService.joinContest(contestId!); 
+      
       showSuccess("Successfully joined!");
-      fetchDetails();
     } catch (e: any) {
-      showError("Failed to join. " + (e.response?.data?.detail || "Check limits."));
+      const msg = e.response?.data?.detail || "Failed to join. Check limits or privacy settings.";
+      showError(msg);
     } finally {
       setIsProcessing(false);
     }

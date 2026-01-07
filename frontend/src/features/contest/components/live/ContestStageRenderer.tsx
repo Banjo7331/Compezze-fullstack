@@ -1,25 +1,25 @@
 import React from 'react';
-import { Box, Typography, Paper, Alert } from '@mui/material';
-import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import { Card, Typography, Alert } from 'antd';
+import { HourglassOutlined } from '@ant-design/icons';
 
 import type { StageSettingsResponse } from '@/features/contest/model/types';
 
-import { EmbeddedQuizRoom } from './live/stages/EmbededQuizRoom';
-import { EmbeddedSurveyRoom } from './live/stages/EmbededSurveyRoom';
+import { EmbeddedQuizRoom } from '@/features/contest/components/live/stages/EmbeddedQuizRoom';
+import { EmbeddedSurveyRoom } from '@/features/contest/components/live/stages/EmbeddedSurveyRoom';
 
-import { ContestJuryStage } from './live/stages/ContestJuryStage';
-import { ContestPublicVoteStage } from './live/stages/ContestPublicVoteStage';
-import { ContestGenericStage } from './live/stages/ContestGenericStage';
+import { ContestJuryStage } from '@/features/contest/components/live/stages/ContestJuryStage';
+import { ContestPublicVoteStage } from '@/features/contest/components/live/stages/ContestPublicVoteStage';
+import { ContestGenericStage } from '@/features/contest/components/live/stages/ContestGenericStage';
+
+const { Title, Text } = Typography;
 
 interface Props {
     roomId: string;
     settings: StageSettingsResponse;
     isOrganizer: boolean;
     ticket?: string | null;
-    
     contestId: string;
     isJury: boolean;
-
     currentSubmission?: any;
 }
 
@@ -27,11 +27,10 @@ export const ContestStageRenderer: React.FC<Props> = ({
     roomId, settings, isOrganizer, ticket, contestId, isJury 
 }) => {
 
-    // --- 1. ETAP: QUIZ ---
     if (settings.type === 'QUIZ') {
-        if (!settings.activeRoomId) return <Alert severity="error">Błąd: Brak ID sesji Quizu.</Alert>;
+        if (!settings.activeRoomId) return <Alert message="Error" description="Missing Quiz Session ID." type="error" showIcon />;
         return (
-            <Box sx={{ mt: 2, width: '100%', border: '1px solid #e0e0e0', borderRadius: 3, overflow: 'hidden', bgcolor: '#fff', boxShadow: 3 }}>
+            <div style={{ marginTop: 16, width: '100%', border: '1px solid #e0e0e0', borderRadius: 12, overflow: 'hidden', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
                 <EmbeddedQuizRoom 
                     roomId={settings.activeRoomId}
                     contestId={contestId}
@@ -39,15 +38,14 @@ export const ContestStageRenderer: React.FC<Props> = ({
                     ticket={ticket || undefined}
                     isHost={isOrganizer}
                 />
-            </Box>
+            </div>
         );
     }
 
-    // --- 2. ETAP: ANKIETA ---
     if (settings.type === 'SURVEY') {
-        if (!settings.activeRoomId) return <Alert severity="error">Błąd: Brak ID sesji Ankiety.</Alert>;
+        if (!settings.activeRoomId) return <Alert message="Error" description="Missing Survey Session ID." type="error" showIcon />;
         return (
-            <Box sx={{ mt: 2, width: '100%', border: '1px solid #e0e0e0', borderRadius: 3, overflow: 'hidden', bgcolor: '#fff', boxShadow: 3, minHeight: 500 }}>
+            <div style={{ marginTop: 16, width: '100%', border: '1px solid #e0e0e0', borderRadius: 12, overflow: 'hidden', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', minHeight: 500 }}>
                 <EmbeddedSurveyRoom 
                     roomId={settings.activeRoomId}
                     contestId={contestId}
@@ -55,11 +53,10 @@ export const ContestStageRenderer: React.FC<Props> = ({
                     ticket={ticket || undefined}
                     isHost={isOrganizer}
                 />
-            </Box>
+            </div>
         );
     }
 
-    // --- 3. ETAP: JURY ---
     if (settings.type === 'JURY_VOTE') {
         return (
             <ContestJuryStage 
@@ -72,7 +69,6 @@ export const ContestStageRenderer: React.FC<Props> = ({
         );
     }
 
-    // --- 4. ETAP: PUBLICZNOŚĆ ---
     if (settings.type === 'PUBLIC_VOTE') {
         return (
             <ContestPublicVoteStage 
@@ -83,19 +79,17 @@ export const ContestStageRenderer: React.FC<Props> = ({
         );
     }
 
-    // --- 5. INNE (GENERIC) ---
     if (settings.type === 'GENERIC') {
-         return <ContestGenericStage name="Przerwa / Informacje" />;
+          return <ContestGenericStage name="Break / Information" />;
     }
 
-    // Fallback
     return (
-        <Paper elevation={1} sx={{ p: 6, textAlign: 'center' }}>
-            <HourglassEmptyIcon sx={{ fontSize: 40, color: 'text.secondary', mb: 1, opacity: 0.5 }} />
-            <Typography variant="h5" gutterBottom>Oczekiwanie</Typography>
-            <Typography variant="body2" color="text.secondary">
-                Konfiguracja etapu w toku...
-            </Typography>
-        </Paper>
+        <Card style={{ padding: 48, textAlign: 'center' }}>
+            <HourglassOutlined style={{ fontSize: 40, color: '#8c8c8c', marginBottom: 8, opacity: 0.5 }} />
+            <Title level={4} style={{ marginBottom: 8 }}>Waiting</Title>
+            <Text type="secondary">
+                Stage configuration in progress...
+            </Text>
+        </Card>
     );
 };

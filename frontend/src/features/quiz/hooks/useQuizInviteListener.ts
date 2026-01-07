@@ -37,19 +37,19 @@ export const useQuizInviteListener = (config: { autoRedirect?: boolean } = {}) =
                     
                     const joinUrl = `/quiz/join/${invite.roomId}?ticket=${invite.invitationToken}`;
 
-                    console.log(`[Quiz] Otrzymano zaproszenie do: ${invite.title}`);
+                    console.log(`[Quiz] Received invitation to: ${invite.title}`);
 
                     addNotification({
                         type: 'QUIZ',
-                        title: 'Zaproszenie do Quizu',
-                        message: `Zostałeś zaproszony do gry: "${invite.title}"`,
+                        title: 'Quiz Invitation',
+                        message: `You have been invited to join the game: "${invite.title}"`,
                         actionUrl: joinUrl
                     });
 
                     if (autoRedirect) {
                         navigate(joinUrl);
                     } else {
-                        showSuccess(`Nowe zaproszenie do Quizu: "${invite.title}"`);
+                        showSuccess(`New quiz invitation: "${invite.title}"`);
                     }
                 });
             } else {

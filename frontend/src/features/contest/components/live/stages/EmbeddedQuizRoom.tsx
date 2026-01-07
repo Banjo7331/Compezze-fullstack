@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Box, CircularProgress, Alert, TextField, InputAdornment, IconButton, Chip, Stack, Typography } from '@mui/material';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { Spin, Alert, Tag, Typography, Space, Card } from 'antd';
 
 import { contestService } from '@/features/contest/api/contestService';
 import { useQuizRoomSocket } from '@/features/quiz/hooks/useQuizRoomSocket';
@@ -8,111 +7,88 @@ import { quizService } from '@/features/quiz/api/quizService';
 import { QuizRoomStatus } from '@/features/quiz/model/types';
 import { useSnackbar } from '@/app/providers/SnackbarProvider';
 
-// Widoki
 import { QuizLobby } from '@/features/quiz/components/live/QuizLobby';
 import { QuizGameView } from '@/features/quiz/components/live/QuizGameView';
 import { QuizResultView } from '@/features/quiz/components/live/QuizResultView';
+
+const { Text } = Typography;
 
 interface Props {
     roomId: string;
     contestId: string;
     contestRoomId: string;
-    ticket?: string | null;       // ✅ Bilet wstępu (JWT) przekazany z ContestLivePage
+    ticket?: string | null;
     isHost: boolean;
-    currentUserNickname?: string; // Nazwa gracza
+    currentUserNickname?: string;
     onGameEnd?: () => void;
 }
 
 export const EmbeddedQuizRoom: React.FC<Props> = ({ 
    roomId, contestId, contestRoomId, ticket, isHost, currentUserNickname, onGameEnd
 }) => {
-    // 1. Hook Logiki Biznesowej (Socket + State)
     const { 
-        status, 
-        currentQuestion, 
-        participantsCount, 
-        leaderboard, 
-        finalResults, 
-        error 
+        status, currentQuestion, leaderboard, finalResults, error 
     } = useQuizRoomSocket(roomId);
     
     const { showError, showSuccess } = useSnackbar();
-    
     const [hasJoined, setHasJoined] = useState(false);
     const [isJoining, setIsJoining] = useState(true);
 
-    // 2. ✅ AUTOMATYCZNE DOŁĄCZENIE (Z użyciem Tokena)
-    // To tutaj następuje "realizacja biletu".
     useEffect(() => {
         let mounted = true;
 
         const performJoin = async () => {
-            // Jeśli już dołączyliśmy w tej sesji komponentu, nie rób tego ponownie
             if (hasJoined) {
                 setIsJoining(false);
                 return;
             }
 
             try {
-                
-                const nick = currentUserNickname || (isHost ? "HOST" : "Uczestnik");
+                const nick = currentUserNickname || (isHost ? "HOST" : "Participant");
                 let tokenToUse = ticket;
 
                 if (!tokenToUse && contestId) {
                     try {
-                        console.log(`[EmbeddedQuiz] Pobieranie tokenu dla contestId: ${contestId}...`);
+                        console.log(`[EmbeddedQuiz] Fetching token for contestId: ${contestId}...`);
                         tokenToUse = await contestService.getStageAccessToken(contestId, contestRoomId);
                     } catch (e) {
-                        console.error("Nie udało się pobrać tokenu quizu", e);
+                        console.error("Failed to fetch quiz token", e);
                     }
                 }
                 
-                console.log(`[EmbeddedQuiz] Dołączanie z tokenem: ${tokenToUse ? 'OBECNY' : 'BRAK'}`);
-
                 await quizService.joinRoom(roomId, nick, tokenToUse || undefined);
-                
                 if (mounted) setHasJoined(true);
             } catch (e: any) {
-                // Ignorujemy błąd, jeśli user już jest w pokoju (idempotentność backendu)
                 if (e.response?.status === 409) { 
                    console.log("User already in room, connecting socket...");
                    if (mounted) setHasJoined(true);
                 } else {
                    console.error("Join error:", e);
-                   showError("Problem z dołączeniem do gry.");
+                   showError("Problem joining the game.");
                 }
             } finally {
                 if (mounted) setIsJoining(false);
             }
         };
 
-        if (roomId) {
-            performJoin();
-        }
-        
+        if (roomId) performJoin();
         return () => { mounted = false; };
     }, [roomId, contestId, contestRoomId, ticket, isHost, currentUserNickname, hasJoined]);
 
-    // --- HANDLERY GRY (Reszta bez zmian) ---
-
     const handleStartGame = async () => {
         if (!isHost) return;
-        try {
-            await quizService.startQuiz(roomId);
-        } catch (e) {
-            showError("Błąd startu quizu.");
-        }
+        try { await quizService.startQuiz(roomId); } 
+        catch (e) { showError("Error starting quiz."); }
     };
 
     const handleSubmitAnswer = async (optionId: number) => {
         if (!currentQuestion) return;
         try {
-            // @ts-ignore
             const qId = currentQuestion.questionId || currentQuestion.id;
             await quizService.submitAnswer(roomId, qId, optionId);
         } catch (e) {
-            // Cicha porażka (np. po czasie)
-        }
+            
+         }
     };
 
     const handleNextQuestion = async () => {
@@ -127,62 +103,42 @@ export const EmbeddedQuizRoom: React.FC<Props> = ({
 
     const handleCloseRoom = async () => {
         if (!isHost) return;
-        if(window.confirm("Zamknąć pokój quizu?")) {
+        if(window.confirm("Close quiz room?")) {
             await quizService.closeRoom(roomId);
             if (onGameEnd) onGameEnd();
         }
     };
 
-    // Link do udostępnienia (tylko dla hosta do wglądu)
     const joinUrl = `${window.location.origin}/quiz/join/${roomId}`;
     const handleCopyLink = () => {
         navigator.clipboard.writeText(joinUrl);
-        showSuccess("Link skopiowany!");
+        showSuccess("Link copied!");
     };
 
-    // --- RENDEROWANIE STANU ---
-
     if (error) {
-        return (
-            <Box p={4} textAlign="center">
-                <Alert severity="error">Stan gry: {error}</Alert>
-            </Box>
-        );
+        return <div style={{ padding: 24, textAlign: 'center' }}><Alert message={`Game status: ${error}`} type="error" showIcon /></div>;
     }
 
     if (isJoining && !status) {
-        return <CircularProgress sx={{ display: 'block', mx: 'auto', my: 8 }} />;
+        return <div style={{ textAlign: 'center', padding: 64 }}><Spin size="large" /></div>;
     }
 
     return (
-        <Box 
-            sx={{ 
-                width: '100%', 
-                minHeight: 500, 
-                bgcolor: 'background.default', 
-                borderRadius: 3, 
-                overflow: 'hidden',
-                position: 'relative'
-            }}
-        >
-            {/* 1. LOBBY */}
+        <Card bodyStyle={{ padding: 0 }} style={{ width: '100%', minHeight: 500, overflow: 'hidden', borderRadius: 12 }}>
             {status === QuizRoomStatus.LOBBY && (
-                <Box>
-                    {/* Pasek z linkiem widoczny tylko dla Hosta w Lobby - opcjonalnie */}
+                <div>
                     {isHost && (
-                        <Box sx={{ p: 2, bgcolor: 'background.paper', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'center' }}>
-                            <Stack direction="row" alignItems="center" spacing={2}>
-                                <Typography variant="caption" color="text.secondary">ID Sesji:</Typography>
-                                <Chip label={roomId} size="small" />
-                            </Stack>
-                        </Box>
+                        <div style={{ padding: 16, borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'center' }}>
+                            <Space>
+                                <Text type="secondary">Session ID:</Text>
+                                <Tag color="blue">{roomId}</Tag>
+                            </Space>
+                        </div>
                     )}
-
                     <QuizLobby isHost={isHost} roomId={roomId} participants={leaderboard} onStart={handleStartGame} />
-                </Box>
+                </div>
             )}
 
-            {/* 2. GRA */}
             {status === QuizRoomStatus.QUESTION_ACTIVE && currentQuestion && (
                 <QuizGameView 
                     question={currentQuestion as any} isHost={isHost}
@@ -190,7 +146,6 @@ export const EmbeddedQuizRoom: React.FC<Props> = ({
                 />
             )}
 
-            {/* 3. WYNIKI POŚREDNIE */}
             {status === QuizRoomStatus.QUESTION_FINISHED && (
                 <QuizResultView 
                     status={status} isHost={isHost} leaderboard={leaderboard}
@@ -198,13 +153,12 @@ export const EmbeddedQuizRoom: React.FC<Props> = ({
                 />
             )}
 
-            {/* 4. KONIEC */}
             {status === QuizRoomStatus.FINISHED && (
                 <QuizResultView 
                     status={status} isHost={isHost} leaderboard={finalResults?.leaderboard || leaderboard}
                     onNext={() => {}} onClose={onGameEnd || (() => {})} 
                 />
             )}
-        </Box>
+        </Card>
     );
 };

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
     Card, Table, Tag, Button, Input, Typography, 
-    Space, Modal, Checkbox, Popconfirm, message, Tooltip 
+    Space, Modal, Checkbox, Popconfirm, message, Tooltip, Divider 
 } from 'antd';
 import { 
     ArrowLeftOutlined, 
@@ -14,6 +14,7 @@ import {
 
 import { contestService } from '@/features/contest/api/contestService';
 import type { ContestParticipantDto, ContestRole } from '@/features/contest/model/types';
+import { InviteUserPanel } from '@/features/contest/components/InviteUserPanel';
 
 const { Title, Text } = Typography;
 
@@ -228,6 +229,11 @@ const ContestManagePage: React.FC = () => {
             >
                 Back
             </Button>
+
+            {contestId && (
+                <InviteUserPanel contestId={contestId} />
+            )}
+            
             
             <Card 
                 title={<Title level={4} style={{ margin: 0 }}>Participant Management</Title>}

@@ -18,6 +18,7 @@ const QuizRoomPage = lazy(() => import('./quiz/QuizRoomPage'));
 const ContestPage = lazy(() => import('./contest/ContestPage'));
 const ContestCreatePage = lazy(() => import('./contest/ContestCreatePage'));
 const ContestDetailsPage = lazy(() => import('./contest/ContestDetailsPage'));
+const ContestJoinPage = lazy(() => import('./contest/ContestJoinPage'));
 const ContestManagePage = lazy(() => import('./contest/ContestManagePage'));
 const ContestReviewPage = lazy(() => import('./contest/ContestReviewPage'));
 const ContestLivePage = lazy(() => import('./contest/ContestLivePage'));
@@ -73,6 +74,7 @@ export const Routing = () => {
               <Route index element={<ContestPage />} />
               <Route path="create" element={<ContestCreatePage />} />
               <Route path=":contestId" element={<ContestDetailsPage />} />
+              <Route path=":contestId/join" element={<ContestJoinPage />} />
               <Route path=":contestId/manage" element={<ContestManagePage />} />
               <Route path=":contestId/review" element={<ContestReviewPage />} />
               <Route path=":contestId/live" element={<ContestLivePage />} />

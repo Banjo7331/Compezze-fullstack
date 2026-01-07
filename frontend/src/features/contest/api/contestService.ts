@@ -71,8 +71,13 @@ export const contestService = {
         const response = await apiClient.get<ContestDetailsDto>(`${BASE_URL}/${id}`);
         return response.data;
     },
-    joinContest: async (id: string) => {
-        await apiClient.post(`${BASE_URL}/${id}/join`);
+    joinContest: async (contestId: string, invitationToken?: string | null) => {
+        const payload = {
+            invitationToken: invitationToken || null
+        };
+
+        const response = await apiClient.post(`${BASE_URL}/${contestId}/join`, payload);
+        return response.data;
     },
     getParticipants: async (contestId: string, query?: string) => {
         const response = await apiClient.get<ContestParticipantDto[]>(`${BASE_URL}/${contestId}/participant`, {
@@ -112,6 +117,12 @@ export const contestService = {
     },
     deleteSubmission: async (contestId: string, submissionId: string) => {
         await apiClient.delete(`${BASE_URL}/${contestId}/submission/${submissionId}`);
+    },
+
+    generateInvites: async (contestId: string, userIds: string[]) => {
+        const payload = { userIds };
+        const response = await apiClient.post<Record<string, string>>(`${BASE_URL}/${contestId}/invites`, payload);
+        return response.data;
     },
 
     createRoom: async (contestId: string) => {

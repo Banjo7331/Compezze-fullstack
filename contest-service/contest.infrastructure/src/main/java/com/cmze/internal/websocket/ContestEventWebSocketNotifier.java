@@ -116,6 +116,26 @@ public class ContestEventWebSocketNotifier {
     }
 
     @EventListener
+    public void handleContestInvitationsGenerated(final ContestInvitationsGeneratedEvent event) {
+        logger.info("Processing generated invitations for contest {}", event.getContestId());
+
+        event.getInvitations().forEach((userId, token) -> {
+
+            final var payload = new ContestInvitationSocketMessage(
+                    event.getContestId(),
+                    event.getContestName(),
+                    token
+            );
+
+            messagingTemplate.convertAndSendToUser(
+                    userId.toString(),
+                    "/queue/invitations",
+                    payload
+            );
+        });
+    }
+
+    @EventListener
     public void handleChatMessage(final ContestChatMessageEvent event) {
         final var topic = "/topic/contest/" + event.getContestId();
 

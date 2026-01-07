@@ -5,11 +5,10 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { useSnackbar } from '@/app/providers/SnackbarProvider';
 import { useNotificationCenter } from '@/app/providers/NotificationProvider';
 
-// Definicja wiadomości zaproszenia (dostosuj pola do tego co wysyła backend)
 interface ContestInviteMessage {
     contestId: string;
-    title: string;
-    inviterName?: string; // Opcjonalnie, jeśli backend to wysyła
+    name: string;
+    invitationToken: string;
 }
 
 export const useContestInviteListener = (config: { autoRedirect?: boolean } = {}) => {
@@ -32,35 +31,29 @@ export const useContestInviteListener = (config: { autoRedirect?: boolean } = {}
         const tryToSubscribe = () => {
             if (!isMounted.current) return;
 
-            // Sprawdzamy czy socket contestu jest połączony (metoda z BaseSocketClient)
             if (contestSocket.isConnected()) {
                 
-                // Subskrybujemy kolejkę użytkownika (to samo endpoint co w Quiz, ale na innym sockecie)
                 subscriptionId = contestSocket.subscribeToTopic('/user/queue/invitations', (msg: any) => {
                     const invite = msg as ContestInviteMessage;
                     
-                    // Budujemy URL do konkursu
-                    const joinUrl = `/contest/${invite.contestId}`;
+                    const joinUrl = `/contest/${invite.contestId}/join?ticket=${invite.invitationToken}`;
 
-                    console.log(`[Contest] Otrzymano zaproszenie do: ${invite.title}`);
+                    console.log(`[Contest] Received invitation to: ${invite.name}`);
 
-                    // 1. Dodajemy do Centrum Powiadomień (dzwoneczek)
                     addNotification({
-                        type: 'CONTEST', // Upewnij się, że masz ten typ w NotificationProvider
-                        title: 'Zaproszenie do Konkursu',
-                        message: `Zostałeś zaproszony do konkursu: "${invite.title}"`,
+                        type: 'CONTEST',
+                        title: 'Contest Invitation',
+                        message: `You have been invited to join: "${invite.name}"`,
                         actionUrl: joinUrl
                     });
 
-                    // 2. Obsługa akcji (przekierowanie lub toast)
                     if (autoRedirect) {
                         navigate(joinUrl);
                     } else {
-                        showSuccess(`Nowe zaproszenie do konkursu: "${invite.title}"`);
+                        showSuccess(`New contest invitation: "${invite.name}"`);
                     }
                 });
             } else {
-                // Jeśli socket nie gotowy, próbujemy za sekundę
                 retryTimeout = setTimeout(tryToSubscribe, 1000);
             }
         };

@@ -7,14 +7,14 @@ import {
   Message,
   MessageInput,
   MessageSeparator,
-  TypingIndicator // <--- 1. Importujemy wskaźnik pisania
+  TypingIndicator
 } from '@chatscope/chat-ui-kit-react';
 
 import { Box, Paper, Typography } from '@mui/material';
 import WifiOffIcon from '@mui/icons-material/WifiOff'; 
 
 import { useAuth } from '@/features/auth/AuthContext';
-import { contestSocket } from '../api/contestSocket';
+import { contestSocket } from '@/features/contest/api/contestSocket';
 import type { ChatSocketMessage } from '../model/socket.types';
 
 interface ContestLiveChatProps {
@@ -32,25 +32,21 @@ interface UIMessage {
 export const ContestLiveChat: React.FC<ContestLiveChatProps> = ({ contestId }) => {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [isConnectionReady, setIsConnectionReady] = useState(false);
-  const [isTyping, setIsTyping] = useState(false); // <--- 2. Stan dla "Ktoś pisze"
+  const [isTyping, setIsTyping] = useState(false);
   const [typingInfo, setTypingInfo] = useState(""); 
   
   const subscriptionRef = useRef<string | null>(null);
   const { currentUserId, currentUser } = useAuth(); 
 
   useEffect(() => {
-    // Funkcja obsługująca przychodzące zdarzenia z socketu
     const handleSocketMessage = (payload: any) => {
-        // --- OBSŁUGA WIADOMOŚCI ---
         if (payload.event === 'CHAT_MESSAGE') {
             const serverMsg = payload as ChatSocketMessage;
             const isMe = currentUserId && serverMsg.userId === currentUserId;
             
-            // Zabezpieczenie ID: używamy ID z serwera LUB timestamp + losowa liczba, żeby uniknąć duplikatów
             const msgId = serverMsg.id || (serverMsg.timestamp ? serverMsg.timestamp.toString() : `${Date.now()}-${Math.random()}`);
 
             setMessages((prev) => {
-                // FIX: Sprawdzamy, czy wiadomość o tym ID już istnieje, żeby nie dodawać jej 2 razy
                 if (prev.some(m => m.id === msgId)) {
                     return prev;
                 }
@@ -64,17 +60,6 @@ export const ContestLiveChat: React.FC<ContestLiveChatProps> = ({ contestId }) =
                 }];
             });
         }
-        
-        // --- OBSŁUGA "KTOŚ PISZE" (Przykład) ---
-        // Jeśli Twój backend wysyła event np. 'USER_TYPING', obsłuż go tutaj:
-        /*
-        if (payload.event === 'USER_TYPING' && payload.userId !== currentUserId) {
-             setTypingInfo(`${payload.userDisplayName} pisze...`);
-             setIsTyping(true);
-             // Wyłącz po 3 sekundach braku aktywności
-             setTimeout(() => setIsTyping(false), 3000);
-        }
-        */
     };
 
     let checkInterval: any;
@@ -82,7 +67,6 @@ export const ContestLiveChat: React.FC<ContestLiveChatProps> = ({ contestId }) =
     const checkAndSubscribe = () => {
          if (contestSocket.isActive()) {
              setIsConnectionReady(true);
-             // Subskrybujemy tylko jeśli jeszcze nie mamy subskrypcji
              if (!subscriptionRef.current) {
                  subscriptionRef.current = contestSocket.subscribeToContest(contestId, handleSocketMessage);
              }
@@ -91,9 +75,8 @@ export const ContestLiveChat: React.FC<ContestLiveChatProps> = ({ contestId }) =
          }
     };
     
-    // Sprawdzamy połączenie co 1s (polling)
     checkInterval = setInterval(checkAndSubscribe, 1000);
-    checkAndSubscribe(); // Wywołanie natychmiastowe
+    checkAndSubscribe();
 
     return () => {
         clearInterval(checkInterval);
@@ -108,13 +91,7 @@ export const ContestLiveChat: React.FC<ContestLiveChatProps> = ({ contestId }) =
       if(!text.trim() || !isConnectionReady) return;
       const myDisplayName = currentUser?.username || "Gość";
 
-      // Wysyłamy do serwera
       contestSocket.sendChatMessage(contestId, text, myDisplayName);
-      
-      // OPCJONALNIE: Możesz dodać wiadomość do listy od razu ("Optimistic UI"),
-      // ale jeśli serwer odsyła ją z powrotem, lepiej poczekać na event z socketu,
-      // żeby nie mieć duplikatów (chyba że masz dobre ID).
-      // Obecna implementacja czeka na odpowiedź serwera (handleSocketMessage).
   };
 
   return (

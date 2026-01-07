@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    Box, Typography, Grid, Card, CardContent, CardMedia, Button, 
-    Slider, Stack, Alert, CircularProgress, Paper
-} from '@mui/material';
-import GavelIcon from '@mui/icons-material/Gavel';
-import RateReviewIcon from '@mui/icons-material/RateReview';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+    Typography, Row, Col, Card, Button, 
+    Slider, Space, Alert, Spin 
+} from 'antd';
+import { 
+    SafetyCertificateOutlined, 
+    FormOutlined, 
+    PlayCircleOutlined 
+} from '@ant-design/icons';
 
 import { contestService } from '@/features/contest/api/contestService';
 import { useSnackbar } from '@/app/providers/SnackbarProvider';
 import type { SubmissionDto, StageSettingsResponse } from '@/features/contest/model/types';
+
+const { Title, Text, Paragraph } = Typography;
 
 interface Props {
     contestId: string;
@@ -27,7 +31,6 @@ export const ContestJuryStage: React.FC<Props> = ({ contestId, roomId, settings,
     const [score, setScore] = useState<number>(settings.maxScore / 2);
     const [hasVoted, setHasVoted] = useState(false);
 
-    // 1. Pobieramy zgłoszenia (APPROVED only)
     useEffect(() => {
         const fetch = async () => {
             try {
@@ -43,16 +46,14 @@ export const ContestJuryStage: React.FC<Props> = ({ contestId, roomId, settings,
 
     const currentSubmission = submissions[currentSubIndex];
 
-    // --- ZMIANA: USUNIĘTY useEffect fetchMedia ---
-
     const handleVote = async () => {
         if (!currentSubmission) return;
         try {
             await contestService.vote(contestId, roomId, settings.stageId, currentSubmission.id, score);
-            showSuccess(`Oddano głos: ${score}`);
+            showSuccess(`Vote submitted: ${score}`);
             setHasVoted(true);
         } catch (e) {
-            showError("Błąd głosowania (może już oceniałeś?).");
+            showError("Voting error (you might have already voted).");
         }
     };
 
@@ -72,123 +73,135 @@ export const ContestJuryStage: React.FC<Props> = ({ contestId, roomId, settings,
     };
 
     if (submissions.length === 0) {
-        return <Alert severity="info">Brak zatwierdzonych prac do oceny.</Alert>;
+        return <Alert message="Info" description="No approved submissions to grade." type="info" showIcon />;
     }
 
-    if (!currentSubmission) return <CircularProgress sx={{ display: 'block', mx: 'auto', mt: 10 }} />;
+    if (!currentSubmission) return <div style={{ textAlign: 'center', marginTop: 40 }}><Spin size="large" /></div>;
 
-    // Helper variable
     const mediaUrl = currentSubmission.mediaUrl;
     const isVideo = mediaUrl?.includes('.mp4');
 
     return (
-        <Box>
-            <Paper sx={{ p: 2, mb: 3, bgcolor: '#fff3e0', display: 'flex', alignItems: 'center', gap: 2 }}>
-                <GavelIcon color="warning" fontSize="large" />
-                <Box flexGrow={1}>
-                    <Typography variant="h5" fontWeight="bold">Głosowanie Jury</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        Ocena pracy {currentSubIndex + 1} z {submissions.length}
-                    </Typography>
-                </Box>
+        <div>
+            {/* Header */}
+            <Card 
+                style={{ marginBottom: 24, backgroundColor: '#fff7e6', borderColor: '#ffd591' }}
+                bodyStyle={{ padding: 16, display: 'flex', alignItems: 'center', gap: 16 }}
+            >
+                <SafetyCertificateOutlined style={{ fontSize: 32, color: '#fa8c16' }} />
+                <div style={{ flexGrow: 1 }}>
+                    <Title level={4} style={{ margin: 0 }}>Jury Voting</Title>
+                    <Text type="secondary">
+                        Grading submission {currentSubIndex + 1} of {submissions.length}
+                    </Text>
+                </div>
                 {isOrganizer && (
-                    <Stack direction="row" spacing={1}>
-                        <Button onClick={handlePrevSubmission} disabled={currentSubIndex === 0}>Poprzednia</Button>
-                        <Button variant="contained" onClick={handleNextSubmission} disabled={currentSubIndex === submissions.length - 1} endIcon={<PlayArrowIcon />}>
-                            Następna Praca
+                    <Space>
+                        <Button onClick={handlePrevSubmission} disabled={currentSubIndex === 0}>
+                            Previous
                         </Button>
-                    </Stack>
+                        <Button 
+                            type="primary" 
+                            onClick={handleNextSubmission} 
+                            disabled={currentSubIndex === submissions.length - 1} 
+                            icon={<PlayCircleOutlined />}
+                        >
+                            Next Submission
+                        </Button>
+                    </Space>
                 )}
-            </Paper>
+            </Card>
 
-            <Grid container spacing={4}>
-                <Grid size={{ xs: 12, md: 7 }}>
-                    <Card elevation={4}>
-                        <Box sx={{ 
+            <Row gutter={[24, 24]}>
+                {/* Media Column */}
+                <Col xs={24} md={14}>
+                    <Card hoverable bodyStyle={{ padding: 0 }}>
+                        <div style={{ 
                             height: 400, 
-                            bgcolor: 'black', 
+                            backgroundColor: 'black', 
                             display: 'flex', 
                             alignItems: 'center', 
                             justifyContent: 'center',
-                            overflow: 'hidden'
+                            overflow: 'hidden',
+                            borderTopLeftRadius: 8,
+                            borderTopRightRadius: 8
                         }}>
-                            {/* --- ZMIANA: Używamy mediaUrl bezpośrednio --- */}
                             {mediaUrl ? (
-                                <CardMedia
-                                    component={isVideo ? 'video' : 'img'}
-                                    image={mediaUrl}
-                                    controls={isVideo}
-                                    autoPlay={isVideo}
-                                    sx={{ 
-                                        height: '100%', 
-                                        width: '100%', 
-                                        objectFit: 'contain'
-                                    }}
-                                />
+                                isVideo ? (
+                                    <video controls autoPlay style={{ height: '100%', width: '100%', objectFit: 'contain' }} src={mediaUrl} />
+                                ) : (
+                                    <img src={mediaUrl} alt="Submission" style={{ height: '100%', width: '100%', objectFit: 'contain' }} />
+                                )
                             ) : (
-                                <Typography color="error">Brak pliku / podglądu</Typography>
+                                <Text type="danger">No file / preview available</Text>
                             )}
-                        </Box>
+                        </div>
                         
-                        <CardContent>
-                            <Typography variant="h4" gutterBottom>{currentSubmission.participantName}</Typography>
-                            <Typography variant="body1" color="text.secondary">
-                                {currentSubmission.comment || "Brak opisu."}
-                            </Typography>
-                        </CardContent>
+                        <div style={{ padding: 24 }}>
+                            <Title level={4} style={{ marginBottom: 8 }}>{currentSubmission.participantName}</Title>
+                            <Paragraph type="secondary" style={{ margin: 0 }}>
+                                {currentSubmission.comment || "No description."}
+                            </Paragraph>
+                        </div>
                     </Card>
-                </Grid>
+                </Col>
 
-                <Grid size={{ xs: 12, md: 5 }}>
+                {/* Voting Column */}
+                <Col xs={24} md={10}>
                     {isJury ? (
-                        <Paper elevation={3} sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                            <Typography variant="h6" gutterBottom align="center">TWOJA OCENA</Typography>
+                        <Card style={{ height: '100%' }} bodyStyle={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                            <Title level={5} style={{ textAlign: 'center', marginBottom: 24 }}>YOUR SCORE</Title>
                             
-                            <Box sx={{ py: 4, px: 2 }}>
+                            <div style={{ padding: '0 16px', marginBottom: 32 }}>
                                 <Slider
                                     value={score}
-                                    onChange={(_, v) => setScore(v as number)}
+                                    onChange={(v) => setScore(v)}
                                     step={1}
                                     min={1}
                                     max={settings.maxScore}
-                                    valueLabelDisplay="on"
+                                    marks={{ 1: '1', [settings.maxScore]: `${settings.maxScore}` }}
                                     disabled={hasVoted}
-                                    marks
-                                    sx={{ 
-                                        color: 'warning.main',
-                                        '& .MuiSlider-valueLabel': { fontSize: '1.5rem', fontWeight: 'bold' } 
-                                    }}
+                                    trackStyle={{ backgroundColor: '#fa8c16' }}
+                                    handleStyle={{ borderColor: '#fa8c16' }}
                                 />
-                            </Box>
+                                <div style={{ textAlign: 'center', marginTop: 8 }}>
+                                    <Text strong style={{ fontSize: 24, color: '#fa8c16' }}>{score}</Text> / {settings.maxScore}
+                                </div>
+                            </div>
 
                             <Button 
-                                variant="contained" 
-                                color="warning" 
+                                type="primary" 
                                 size="large"
-                                startIcon={<RateReviewIcon />}
+                                icon={<FormOutlined />}
                                 onClick={handleVote}
                                 disabled={hasVoted}
-                                fullWidth
-                                sx={{ py: 2, fontSize: '1.2rem' }}
+                                block
+                                style={{ height: 50, fontSize: 16, backgroundColor: hasVoted ? undefined : '#fa8c16' }}
                             >
-                                {hasVoted ? "OCENIONO" : "ZATWIERDŹ OCENĘ"}
+                                {hasVoted ? "GRADED" : "SUBMIT SCORE"}
                             </Button>
                             
                             {hasVoted && (
-                                <Alert severity="success" sx={{ mt: 2 }}>
-                                    Głos przyjęty. Czekaj na następną pracę.
-                                </Alert>
+                                <Alert 
+                                    message="Vote accepted" 
+                                    description="Wait for the next submission." 
+                                    type="success" 
+                                    showIcon 
+                                    style={{ marginTop: 24 }} 
+                                />
                             )}
-                        </Paper>
+                        </Card>
                     ) : (
-                        <Paper elevation={1} sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                            <CircularProgress color="warning" />
-                            <Typography variant="h6" sx={{ mt: 2 }}>Jury ocenia pracę...</Typography>
-                            <Typography variant="body2" color="text.secondary">Zaczekaj na wyniki.</Typography>
-                        </Paper>
+                        <Card style={{ height: '100%' }}>
+                            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+                                <Spin size="large" />
+                                <Title level={5} style={{ marginTop: 24 }}>The Jury is grading...</Title>
+                                <Text type="secondary">Please wait for results.</Text>
+                            </div>
+                        </Card>
                     )}
-                </Grid>
-            </Grid>
-        </Box>
+                </Col>
+            </Row>
+        </div>
     );
 };

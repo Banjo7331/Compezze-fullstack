@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    Box, Typography, Grid, Card, CardContent, CardActionArea, 
-    Dialog, DialogContent, DialogActions, DialogTitle, Button, 
-    IconButton, CircularProgress, Alert, Chip, CardMedia
-} from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import HowToVoteIcon from '@mui/icons-material/HowToVote';
-import ZoomInIcon from '@mui/icons-material/ZoomIn';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+    Typography, Row, Col, Card, Modal, Button, 
+    Spin, Alert, Tag, Space, Image 
+} from 'antd';
+import { 
+    CheckCircleOutlined, 
+    ZoomInOutlined, 
+    LikeOutlined,
+    PlayCircleOutlined 
+} from '@ant-design/icons';
 
 import { contestService } from '@/features/contest/api/contestService';
 import { useSnackbar } from '@/app/providers/SnackbarProvider';
 import type { SubmissionDto, StageSettingsResponse } from '@/features/contest/model/types';
+
+const { Title, Text, Paragraph } = Typography;
 
 interface Props {
     contestId: string;
@@ -44,7 +47,7 @@ export const ContestPublicVoteStage: React.FC<Props> = ({ contestId, roomId, set
                 const rawData = Array.isArray(list) ? list : list.content;
                 setSubmissions(shuffleArray(rawData || []));
             } catch (e) {
-                console.error("Błąd pobierania listy", e);
+                console.error("Error fetching submissions", e);
             } finally {
                 setLoading(false);
             }
@@ -52,163 +55,199 @@ export const ContestPublicVoteStage: React.FC<Props> = ({ contestId, roomId, set
         fetchList();
     }, [contestId]);
 
-    // --- ZMIANA: USUNIĘTY useEffect fetchSingleUrl ---
-
     const handleVote = async () => {
         if (!selectedSub) return;
         setIsVoting(true);
         try {
             await contestService.vote(contestId, roomId, settings.stageId, selectedSub.id, 1);
-            showSuccess(`Twój głos na "${selectedSub.participantName}" został przyjęty!`);
+            showSuccess(`Your vote for "${selectedSub.participantName}" has been accepted!`);
             setVotedSubId(selectedSub.id);
             setSelectedSub(null);
         } catch (e: any) {
             if (e.response?.status === 409 || e.message?.includes("already")) {
-                showError("Możesz oddać tylko jeden głos!");
+                showError("You can only vote once!");
             } else {
-                showError("Wystąpił błąd podczas głosowania.");
+                showError("An error occurred while voting.");
             }
         } finally {
             setIsVoting(false);
         }
     };
 
-    if (loading) return <CircularProgress sx={{ display: 'block', mx: 'auto', mt: 10 }} />;
+    if (loading) return <div style={{ textAlign: 'center', marginTop: 40 }}><Spin size="large" /></div>;
 
     return (
-        <Box>
-            <Box textAlign="center" mb={4}>
-                <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">
-                    Głosowanie Publiczności
-                </Typography>
-                <Typography color="text.secondary">
-                    Kliknij w kartę, aby zobaczyć pracę i oddać głos.<br/>
-                    Masz tylko <strong>JEDEN</strong> głos!
-                </Typography>
+        <div>
+            {/* --- NAGŁÓWEK --- */}
+            <div style={{ textAlign: 'center', marginBottom: 32 }}>
+                <Title level={2} style={{ color: '#1890ff', marginBottom: 8 }}>
+                    Audience Voting
+                </Title>
+                <Paragraph type="secondary" style={{ fontSize: 16 }}>
+                    Click on a card to view the submission details and cast your vote.<br/>
+                    You have only <strong>ONE</strong> vote!
+                </Paragraph>
                 
                 {votedSubId && (
-                    <Alert severity="success" icon={<CheckCircleIcon fontSize="inherit" />} sx={{ mt: 2, display: 'inline-flex' }}>
-                        Dziękujemy za oddanie głosu.
-                    </Alert>
+                    <Alert 
+                        message="Thank you! Your vote has been recorded." 
+                        type="success" 
+                        showIcon 
+                        icon={<CheckCircleOutlined />}
+                        style={{ display: 'inline-flex', marginTop: 16 }}
+                    />
                 )}
-            </Box>
+            </div>
 
-            <Grid container spacing={2}>
+            {/* --- LISTA ZGŁOSZEŃ --- */}
+            <Row gutter={[16, 16]}>
                 {submissions.map((sub) => {
                     const isSelected = votedSubId === sub.id;
                     const isOther = votedSubId && !isSelected;
-                    const isVideo = sub.mediaUrl?.includes('.mp4');
+                    // Sprawdzamy czy to wideo
+                    const isVideo = sub.mediaUrl?.includes('.mp4') || sub.mediaUrl?.includes('.webm');
 
                     return (
-                        <Grid size={{ xs: 6, sm: 4, md: 3 }} key={sub.id}>
+                        <Col xs={12} sm={8} md={6} key={sub.id}>
                             <Card 
-                                elevation={isSelected ? 8 : 2}
-                                sx={{ 
+                                hoverable={!votedSubId}
+                                onClick={() => !votedSubId && setSelectedSub(sub)}
+                                style={{ 
                                     height: '100%', 
                                     opacity: isOther ? 0.5 : 1,
-                                    border: isSelected ? '2px solid #4caf50' : 'none',
-                                    transition: '0.3s',
-                                    '&:hover': { transform: !votedSubId ? 'scale(1.03)' : 'none' }
+                                    borderColor: isSelected ? '#52c41a' : undefined,
+                                    borderWidth: isSelected ? 2 : 1,
+                                    overflow: 'hidden'
                                 }}
+                                bodyStyle={{ padding: 0, height: '100%', display: 'flex', flexDirection: 'column' }}
                             >
-                                <CardActionArea 
-                                    onClick={() => !votedSubId && setSelectedSub(sub)}
-                                    disabled={!!votedSubId}
-                                    sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}
-                                >
-                                    <Box sx={{ 
-                                        width: '100%', height: 140, 
-                                        bgcolor: '#f5f5f5', 
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: '#bdbdbd',
-                                        position: 'relative'
-                                    }}>
-                                        {/* Wyświetl miniaturkę jeśli to obrazek */}
-                                        {!isVideo && sub.mediaUrl ? (
-                                             <CardMedia 
-                                                component="img" 
-                                                image={sub.mediaUrl} 
-                                                sx={{ height: '100%', width: '100%', objectFit: 'cover' }} 
-                                             />
+                                {/* KONTENER MEDIÓW */}
+                                <div style={{ 
+                                    width: '100%', height: 160, 
+                                    backgroundColor: '#000', 
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: '#bdbdbd',
+                                    position: 'relative',
+                                    overflow: 'hidden'
+                                }}>
+                                    {sub.mediaUrl ? (
+                                        isVideo ? (
+                                            // RENDEROWANIE WIDEO W MINIATURCE
+                                            <>
+                                                <video 
+                                                    src={sub.mediaUrl} 
+                                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                                    muted // Wyciszamy miniaturkę
+                                                    preload="metadata"
+                                                />
+                                                {/* Ikona Play na środku dla jasności */}
+                                                <div style={{
+                                                    position: 'absolute', top: '50%', left: '50%',
+                                                    transform: 'translate(-50%, -50%)',
+                                                    color: 'rgba(255,255,255,0.8)', fontSize: 32
+                                                }}>
+                                                    <PlayCircleOutlined />
+                                                </div>
+                                            </>
                                         ) : (
-                                            <ZoomInIcon fontSize="large" />
-                                        )}
-                                    </Box>
+                                            // RENDEROWANIE OBRAZKA
+                                            <img 
+                                                src={sub.mediaUrl} 
+                                                alt="Thumbnail" 
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                            />
+                                        )
+                                    ) : (
+                                        // BRAK PLIKU
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                            <ZoomInOutlined style={{ fontSize: 24, marginBottom: 8 }} />
+                                            <Text type="secondary" style={{ fontSize: 12, color: '#888' }}>No Preview</Text>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                {/* TREŚĆ KARTY */}
+                                <div style={{ padding: 12, flexGrow: 1 }}>
+                                    <Text strong style={{ display: 'block' }} ellipsis>
+                                        {sub.participantName}
+                                    </Text>
+                                    <Text type="secondary" style={{ fontSize: 12 }} ellipsis>
+                                        {sub.originalFilename || "Untitled"}
+                                    </Text>
                                     
-                                    <CardContent sx={{ width: '100%' }}>
-                                        <Typography variant="subtitle1" fontWeight="bold" noWrap>
-                                            {sub.participantName}
-                                        </Typography>
-                                        <Typography variant="caption" color="text.secondary" display="block" noWrap>
-                                            {sub.originalFilename || "Bez tytułu"}
-                                        </Typography>
-                                        
-                                        {isSelected && (
-                                            <Chip label="Twój Głos" color="success" size="small" sx={{ mt: 1 }} />
-                                        )}
-                                    </CardContent>
-                                </CardActionArea>
+                                    {isSelected && (
+                                        <div style={{ marginTop: 8 }}>
+                                            <Tag color="success" icon={<CheckCircleOutlined />}>Your Vote</Tag>
+                                        </div>
+                                    )}
+                                </div>
                             </Card>
-                        </Grid>
+                        </Col>
                     );
                 })}
-            </Grid>
+            </Row>
 
-            <Dialog 
+            {/* --- MODAL PODGLĄDU I GŁOSOWANIA --- */}
+            <Modal 
                 open={!!selectedSub} 
-                onClose={() => setSelectedSub(null)}
-                maxWidth="md"
-                fullWidth
+                onCancel={() => setSelectedSub(null)}
+                title={<span style={{ fontWeight: 'bold' }}>{selectedSub?.participantName}</span>}
+                width={800}
+                centered
+                footer={[
+                    <Button key="back" onClick={() => setSelectedSub(null)}>
+                        Back
+                    </Button>,
+                    <Button 
+                        key="submit" 
+                        type="primary" 
+                        icon={<LikeOutlined />} 
+                        onClick={handleVote} 
+                        loading={isVoting}
+                        size="large"
+                        style={{ minWidth: 120 }}
+                    >
+                        CAST VOTE
+                    </Button>
+                ]}
             >
                 {selectedSub && (
                     <>
-                        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Typography variant="h6" fontWeight="bold">{selectedSub.participantName}</Typography>
-                            <IconButton onClick={() => setSelectedSub(null)}><CloseIcon /></IconButton>
-                        </DialogTitle>
-
-                        <DialogContent dividers>
-                            <Box sx={{ 
-                                width: '100%', minHeight: 300, bgcolor: 'black', 
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                mb: 2, borderRadius: 1, overflow: 'hidden'
-                            }}>
-                                {/* --- ZMIANA: Używamy mediaUrl bezpośrednio --- */}
-                                {selectedSub.mediaUrl ? (
-                                    selectedSub.mediaUrl.includes('.mp4') ? (
-                                        <video controls autoPlay style={{ maxHeight: '60vh', maxWidth: '100%' }} src={selectedSub.mediaUrl} />
-                                    ) : (
-                                        <img src={selectedSub.mediaUrl} alt="Praca" style={{ maxHeight: '60vh', maxWidth: '100%', objectFit: 'contain' }} />
-                                    )
+                        <div style={{ 
+                            width: '100%', minHeight: 400, backgroundColor: '#000', 
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            marginBottom: 16, borderRadius: 8, overflow: 'hidden'
+                        }}>
+                            {selectedSub.mediaUrl ? (
+                                (selectedSub.mediaUrl.includes('.mp4') || selectedSub.mediaUrl.includes('.webm')) ? (
+                                    <video 
+                                        controls 
+                                        autoPlay 
+                                        style={{ maxHeight: '60vh', maxWidth: '100%' }} 
+                                        src={selectedSub.mediaUrl} 
+                                    />
                                 ) : (
-                                    <Typography color="error">Brak pliku</Typography>
-                                )}
-                            </Box>
-                            
-                            <Typography variant="body1">
-                                {selectedSub.comment || "Brak opisu pracy."}
-                            </Typography>
-                        </DialogContent>
-
-                        <DialogActions sx={{ p: 3, justifyContent: 'center' }}>
-                            <Button onClick={() => setSelectedSub(null)} color="inherit" sx={{ mr: 2 }}>
-                                Wróć
-                            </Button>
-                            <Button 
-                                variant="contained" 
-                                color="primary" 
-                                size="large"
-                                startIcon={<HowToVoteIcon />}
-                                onClick={handleVote}
-                                disabled={isVoting}
-                                sx={{ px: 4 }}
-                            >
-                                {isVoting ? "Zapisywanie..." : "ODDAJ GŁOS"}
-                            </Button>
-                        </DialogActions>
+                                    <Image 
+                                        src={selectedSub.mediaUrl} 
+                                        alt="Submission" 
+                                        style={{ maxHeight: '60vh', maxWidth: '100%', objectFit: 'contain' }} 
+                                        preview={false} // Wyłączamy preview Image, bo jesteśmy już w modalu
+                                    />
+                                )
+                            ) : (
+                                <Text type="danger">No file available</Text>
+                            )}
+                        </div>
+                        
+                        <div style={{ padding: '0 8px' }}>
+                            <Title level={5}>Description:</Title>
+                            <Paragraph style={{ fontSize: 16 }}>
+                                {selectedSub.comment || "No description provided by the participant."}
+                            </Paragraph>
+                        </div>
                     </>
                 )}
-            </Dialog>
-        </Box>
+            </Modal>
+        </div>
     );
 };

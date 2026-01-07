@@ -3,6 +3,8 @@ package com.cmze.controller;
 import com.cmze.entity.Contest;
 import com.cmze.request.CreateContestRequest;
 import com.cmze.request.ManageRoleRequest;
+import com.cmze.request.GenerateContestInvitesRequest;
+import com.cmze.request.JoinContestRequest;
 import com.cmze.usecase.contest.*;
 import com.cmze.usecase.participant.ManageContestRolesUseCase;
 import com.cmze.usecase.participant.SubmitEntryForContestUseCase;
@@ -38,6 +40,7 @@ public class ContestController {
     private final GetContestDetailsUseCase getContestDetailsUseCase;
     private final JoinContestUseCase joinContestUseCase;
     private final CloseSubmissionsEnteringUseCase closeSubmissionsEnteringUseCase;
+    private final InviteUsersForContestUseCase inviteUsersForContestUseCase;
 
     public ContestController(CreateContestUseCase createContestUseCase,
                              GetMyContestsUseCase getMyContestsUseCase,
@@ -47,7 +50,8 @@ public class ContestController {
                              ManageContestRolesUseCase manageContestRolesUseCase,
                              GetContestDetailsUseCase getContestDetailsUseCase,
                              JoinContestUseCase joinContestUseCase,
-                             CloseSubmissionsEnteringUseCase closeSubmissionsEnteringUseCase
+                             CloseSubmissionsEnteringUseCase closeSubmissionsEnteringUseCase,
+                             InviteUsersForContestUseCase inviteUsersForContestUseCase
     ) {
         this.createContestUseCase = createContestUseCase;
         this.getMyContestsUseCase = getMyContestsUseCase;
@@ -58,6 +62,7 @@ public class ContestController {
         this.getContestDetailsUseCase = getContestDetailsUseCase;
         this.joinContestUseCase = joinContestUseCase;
         this.closeSubmissionsEnteringUseCase = closeSubmissionsEnteringUseCase;
+        this.inviteUsersForContestUseCase = inviteUsersForContestUseCase;
     }
 
     @PostMapping
@@ -151,11 +156,12 @@ public class ContestController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> joinContest(
             @PathVariable final Long contestId,
+            @RequestBody(required = false) final JoinContestRequest request,
             final Authentication authentication
     ) {
         final var userId = (UUID) authentication.getPrincipal();
 
-        final var result = joinContestUseCase.execute(contestId, userId);
+        final var result = joinContestUseCase.execute(contestId, userId, request);
 
         return result.toResponseEntity(HttpStatus.OK);
     }
@@ -169,6 +175,20 @@ public class ContestController {
         final var organizerId = (UUID) authentication.getPrincipal();
         final var result = closeSubmissionsEnteringUseCase.execute(contestId, organizerId);
         return result.toResponseEntity(HttpStatus.OK);
+    }
+
+    @PostMapping("/{contestId}/invites")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> generateInvites(
+            @PathVariable final Long contestId,
+            @RequestBody final GenerateContestInvitesRequest request,
+            final Authentication authentication
+    ) {
+        final var hostId = (UUID) authentication.getPrincipal();
+
+        final var result = inviteUsersForContestUseCase.execute(contestId, request, hostId);
+
+        return result.toResponseEntity(HttpStatus.CREATED);
     }
 
 }

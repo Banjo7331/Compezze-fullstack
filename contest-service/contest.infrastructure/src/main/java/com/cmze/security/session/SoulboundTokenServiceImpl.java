@@ -27,13 +27,13 @@ public class SoulboundTokenServiceImpl implements SoulboundTokenService {
     }
 
     @Override
-    public String mintInvitationToken(final UUID roomId, final UUID targetUserId) {
+    public String mintInvitationToken(final Long contestId, final UUID targetUserId) {
         final var now = new Date();
         final var expiryDate = new Date(now.getTime() + EXPIRATION_MS);
 
         return Jwts.builder()
                 .subject(targetUserId.toString())
-                .claim("roomId", roomId.toString())
+                .claim("contestId", contestId.toString())
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(key)
@@ -41,7 +41,7 @@ public class SoulboundTokenServiceImpl implements SoulboundTokenService {
     }
 
     @Override
-    public boolean validateSoulboundToken(final String token, final UUID currentUserId, final UUID currentRoomId) {
+    public boolean validateSoulboundToken(final String token, final UUID currentUserId, final Long currentContestId) {
         try {
             final var claims = Jwts.parser()
                     .verifyWith(key)
@@ -50,10 +50,10 @@ public class SoulboundTokenServiceImpl implements SoulboundTokenService {
                     .getPayload();
 
             final var boundUserId = claims.getSubject();
-            final var boundRoomId = claims.get("roomId", String.class);
+            final var boundContestId = claims.get("contestId", String.class);
 
-            if (!boundRoomId.equals(currentRoomId.toString())) {
-                logger.warn("Token valid but for wrong room. Expected: {}, Got: {}", currentRoomId, boundRoomId);
+            if (boundContestId == null || !boundContestId.equals(currentContestId.toString())) {
+                logger.warn("Token valid but wrong contest. Expected: {}, Got: {}", currentContestId, boundContestId);
                 return false;
             }
 
@@ -65,7 +65,7 @@ public class SoulboundTokenServiceImpl implements SoulboundTokenService {
             return true;
 
         } catch (JwtException | IllegalArgumentException e) {
-            logger.error("Invalid invitation token: {}", e.getMessage());
+            logger.error("Invalid contest invitation token: {}", e.getMessage());
             return false;
         }
     }

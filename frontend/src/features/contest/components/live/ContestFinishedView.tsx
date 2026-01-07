@@ -1,10 +1,11 @@
 import React from 'react';
-import { Box, Typography, Button, Container, Paper } from '@mui/material';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { Card, Typography, Button } from 'antd';
+import { TrophyOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { ContestLeaderboard } from './ContestLeaderboard';
-import type { ContestLeaderboardEntryDto } from '../model/types';
+import type { ContestLeaderboardEntryDto } from '@/features/contest/model/types';
+
+const { Title, Text } = Typography;
 
 interface Props {
     leaderboard: ContestLeaderboardEntryDto[];
@@ -16,48 +17,63 @@ export const ContestFinishedView: React.FC<Props> = ({ leaderboard, currentUserI
     const navigate = useNavigate();
 
     return (
-        <Container maxWidth="md" sx={{ py: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ padding: '40px 20px', display: 'flex', justifyContent: 'center' }}>
             
-            {/* Karta Główna */}
-            <Paper elevation={4} sx={{ p: 6, borderRadius: 4, width: '100%', textAlign: 'center', bgcolor: '#fffde7' }}>
+            <Card 
+                style={{ 
+                    width: '100%', 
+                    maxWidth: 800, 
+                    textAlign: 'center', 
+                    backgroundColor: '#fffbe6',
+                    borderColor: '#ffe58f',
+                    borderRadius: 16,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}
+                bodyStyle={{ padding: 48 }}
+            >
+                <TrophyOutlined style={{ fontSize: 80, color: '#faad14', marginBottom: 16 }} />
                 
-                <EmojiEventsIcon sx={{ fontSize: 80, color: '#fbc02d', mb: 2 }} />
+                <Title level={2} style={{ color: '#d48806', marginBottom: 8 }}>
+                    Contest Finished!
+                </Title>
                 
-                <Typography variant="h3" fontWeight="bold" gutterBottom color="primary.main">
-                    Konkurs Zakończony!
-                </Typography>
-                
-                <Typography variant="h6" color="text.secondary" sx={{ mb: 4 }}>
-                    Dziękujemy za udział. Oto ostateczne wyniki:
-                </Typography>
+                <Text type="secondary" style={{ fontSize: 16, display: 'block', marginBottom: 32 }}>
+                    Thank you for participating. Here are the final results:
+                </Text>
 
-                {/* Sekcja Rankingu - scrollowana, jeśli długa */}
-                <Box sx={{ 
+                <div style={{ 
                     maxHeight: '500px', 
                     overflowY: 'auto', 
-                    mb: 4, 
+                    marginBottom: 32, 
                     textAlign: 'left',
-                    bgcolor: 'background.paper',
-                    borderRadius: 2,
-                    boxShadow: 1
+                    backgroundColor: '#fff',
+                    borderRadius: 8,
+                    border: '1px solid #f0f0f0',
+                    padding: 0
                 }}>
                     <ContestLeaderboard 
                         leaderboard={leaderboard} 
                         currentUserId={currentUserId} 
                     />
-                </Box>
+                </div>
 
                 <Button 
-                    variant="contained" 
+                    type="primary" 
                     size="large" 
-                    startIcon={<ArrowBackIcon />}
+                    icon={<ArrowLeftOutlined />}
                     onClick={() => navigate(`/contest/${contestId}`)}
-                    sx={{ px: 4, py: 1.5, borderRadius: 3, fontWeight: 'bold' }}
+                    style={{ 
+                        paddingLeft: 32, 
+                        paddingRight: 32, 
+                        height: 48, 
+                        fontSize: 16,
+                        borderRadius: 24 
+                    }}
                 >
-                    Wróć do Strony Głównej
+                    Back to Contest Page
                 </Button>
 
-            </Paper>
-        </Container>
+            </Card>
+        </div>
     );
 };

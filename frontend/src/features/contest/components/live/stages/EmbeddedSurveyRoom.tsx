@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Box, CircularProgress, Alert, Typography } from '@mui/material';
-import { useSnackbar } from '@/app/providers/SnackbarProvider';
+import { Spin, Alert, Typography } from 'antd';
 
 import { contestService } from '@/features/contest/api/contestService';
 import { surveyService } from '@/features/survey/api/surveyService';
-import { SurveySubmissionForm } from '@/features/survey/components/SurveySubmissionForm';
-import { LiveResultSurveyDashboard } from '@/features/survey/components/LiveResultSurveyDashboard';
+import { SurveySubmissionForm } from '@/features/survey/components/live/SurveySubmissionForm';
+import { LiveResultSurveyDashboard } from '@/features/survey/components/live/LiveResultSurveyDashboard';
 import type { SurveyFormStructure } from '@/features/survey/model/types';
+import { useSnackbar } from '@/app/providers/SnackbarProvider';
+
+const { Title } = Typography;
 
 interface Props {
     roomId: string;
@@ -24,8 +26,6 @@ export const EmbeddedSurveyRoom: React.FC<Props> = ({ roomId, contestId, contest
     
     const [surveyForm, setSurveyForm] = useState<SurveyFormStructure | null>(null);
     const [hasSubmitted, setHasSubmitted] = useState(false);
-    
-    // Używamy stanu lokalnego, bo backend może nadpisać isHost (np. jeśli user jest właścicielem ankiety)
     const [isRoomHost, setIsRoomHost] = useState(isHost); 
 
     useEffect(() => {
@@ -34,16 +34,13 @@ export const EmbeddedSurveyRoom: React.FC<Props> = ({ roomId, contestId, contest
         const joinRoom = async () => {
             setLoading(true);
             try {
-                
                 let tokenToUse = ticket;
-
                 if (!tokenToUse && contestId) {
                     try {
-                        console.log("Pobieranie tokenu dla ankiety...");
+                        console.log("Fetching survey token...");
                         tokenToUse = await contestService.getStageAccessToken(contestId, contestRoomId);
                     } catch (e) {
-                        console.error("Nie udało się pobrać tokenu ankiety", e);
-                        // Kontynuujemy, surveyService.joinRoom może zwrócić 403, co obsłużymy niżej
+                        console.error("Failed to fetch survey token", e);
                     }
                 }
 
@@ -58,16 +55,13 @@ export const EmbeddedSurveyRoom: React.FC<Props> = ({ roomId, contestId, contest
             } catch (err: any) {
                 console.error("Failed to join survey:", err);
                 if (mounted) {
-                    setError("Nie udało się dołączyć do ankiety. Może być zamknięta lub wymagane są uprawnienia.");
+                    setError("Failed to join survey. It might be closed or requires permissions.");
                     setLoading(false);
                 }
             }
         };
 
-        if (roomId) {
-            joinRoom();
-        }
-        
+        if (roomId) joinRoom();
         return () => { mounted = false; };
     }, [roomId, contestId, contestRoomId, ticket]);
 
@@ -76,39 +70,39 @@ export const EmbeddedSurveyRoom: React.FC<Props> = ({ roomId, contestId, contest
     };
 
     const handleSubmissionFailure = () => {
-        showError("Wystąpił błąd podczas wysyłania odpowiedzi. Spróbuj ponownie.");
+        showError("An error occurred while submitting. Please try again.");
     };
 
-    if (loading) return <CircularProgress sx={{ display: 'block', mx: 'auto', my: 4 }} />;
-    if (error) return <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>;
+    if (loading) return <div style={{ textAlign: 'center', padding: 32 }}><Spin size="large" /></div>;
+    if (error) return <Alert message="Error" description={error} type="error" showIcon style={{ margin: 16 }} />;
 
-    // 1. WIDOK HOSTA (Wyniki na żywo)
     if (isRoomHost) {
         return (
-            <Box sx={{ width: '100%', height: '100%', overflowY: 'auto', bgcolor: '#fff', p: 2 }}>
-                <Typography variant="h6" gutterBottom color="primary">Panel Hosta (Wyniki na żywo)</Typography>
+            <div style={{ width: '100%', height: '100%', overflowY: 'auto', backgroundColor: '#fff', padding: 16 }}>
+                <Title level={4} style={{ color: '#1890ff', marginBottom: 16 }}>Host Panel (Live Results)</Title>
                 <LiveResultSurveyDashboard roomId={roomId} isHost={true} />
-            </Box>
+            </div>
         );
     }
 
-    // 2. WIDOK UCZESTNIKA (Formularz lub Wyniki po wysłaniu)
     return (
-        <Box sx={{ width: '100%', height: '100%', overflowY: 'auto', bgcolor: '#fff', p: 2 }}>
+        <div style={{ width: '100%', height: '100%', overflowY: 'auto', backgroundColor: '#fff', padding: 16 }}>
             {hasSubmitted ? (
-                <Box>
-                    <Alert severity="success" sx={{ mb: 2 }}>
-                        Dziękujemy! Twoje odpowiedzi zostały zapisane.
-                    </Alert>
-                    <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
-                        Wyniki grupy:
-                    </Typography>
+                <div>
+                    <Alert 
+                        message="Thank you!" 
+                        description="Your responses have been saved." 
+                        type="success" 
+                        showIcon 
+                        style={{ marginBottom: 16 }} 
+                    />
+                    <Title level={5} style={{ marginTop: 16, marginBottom: 16 }}>Group results:</Title>
                     <LiveResultSurveyDashboard 
                         roomId={roomId} 
                         isHost={false} 
                         isParticipantSubmitted={true} 
                     />
-                </Box>
+                </div>
             ) : (
                 surveyForm ? (
                     <SurveySubmissionForm 
@@ -118,9 +112,9 @@ export const EmbeddedSurveyRoom: React.FC<Props> = ({ roomId, contestId, contest
                         onSubmissionFailure={handleSubmissionFailure}
                     />
                 ) : (
-                    <Alert severity="warning">Błąd ładowania formularza.</Alert>
+                    <Alert message="Error" description="Error loading form." type="warning" showIcon />
                 )
             )}
-        </Box>
+        </div>
     );
 };

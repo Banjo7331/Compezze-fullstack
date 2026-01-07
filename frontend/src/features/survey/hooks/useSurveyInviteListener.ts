@@ -36,19 +36,19 @@ export const useSurveyInviteListener = (config: { autoRedirect?: boolean } = {})
                     const invite = msg as InviteMessage;
                     const joinUrl = `/survey/join/${invite.roomId}?ticket=${invite.invitationToken}`;
 
-                    console.log(`[Survey] Otrzymano zaproszenie do: ${invite.surveyTitle}`);
+                    console.log(`[Survey] Received invitation to: ${invite.surveyTitle}`);
 
                     addNotification({
                         type: 'SURVEY',
-                        title: 'Zaproszenie do Ankiety',
-                        message: `Zostałeś zaproszony do: "${invite.surveyTitle}"`,
+                        title: 'Survey Invitation',
+                        message: `You have been invited to participate in: "${invite.surveyTitle}"`,
                         actionUrl: joinUrl
                     });
 
                     if (autoRedirect) {
                         navigate(joinUrl);
                     } else {
-                        showSuccess(`Nowe zaproszenie: "${invite.surveyTitle}"`);
+                        showSuccess(`New survey invitation: "${invite.surveyTitle}"`);
                     }
                 });
             } else {

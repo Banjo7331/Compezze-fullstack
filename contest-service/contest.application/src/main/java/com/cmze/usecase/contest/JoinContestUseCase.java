@@ -1,12 +1,15 @@
 package com.cmze.usecase.contest;
 
+import com.cmze.request.JoinContestRequest;
 import com.cmze.entity.Participant;
+import com.cmze.entity.Contest;
 import com.cmze.enums.ContestStatus;
 import com.cmze.repository.ContestRepository;
 import com.cmze.repository.ParticipantRepository;
 import com.cmze.response.JoinContestResponse;
 import com.cmze.shared.ActionResult;
 import com.cmze.spi.identity.IdentityServiceClient;
+import com.cmze.spi.helpers.SoulboundTokenService;
 import com.cmze.usecase.UseCase;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -26,24 +29,32 @@ public class JoinContestUseCase {
     private final ContestRepository contestRepository;
     private final ParticipantRepository participantRepository;
     private final IdentityServiceClient identityClient;
+    private final SoulboundTokenService soulboundTokenService;
 
     public JoinContestUseCase(final ContestRepository contestRepository,
                               final ParticipantRepository participantRepository,
-                              final IdentityServiceClient identityClient) {
+                              final IdentityServiceClient identityClient,
+                              final SoulboundTokenService soulboundTokenService) {
         this.contestRepository = contestRepository;
         this.participantRepository = participantRepository;
         this.identityClient = identityClient;
+        this.soulboundTokenService = soulboundTokenService;
     }
 
     @Transactional
-    public ActionResult<JoinContestResponse> execute(final Long contestId, final UUID userId) {
+    public ActionResult<JoinContestResponse> execute(final Long contestId, final UUID userId, final JoinContestRequest request) {
         try {
 
             final var contestOpt = contestRepository.findById(contestId);
             if (contestOpt.isEmpty()) return ActionResult.failure(ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "Contest not found"));
             final var contest = contestOpt.get();
 
-            if (contest.getStatus() == ContestStatus.DRAFT) return ActionResult.failure(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Contest not in draft mode"));
+            if (contest.getStatus() == ContestStatus.DRAFT || contest.getStatus() == ContestStatus.FINISHED) return ActionResult.failure(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Contest not in draft mode"));
+
+            final var token = (request != null) ? request.getInvitationToken() : null;
+            if (contest.isPrivate() && !isAccessAllowed(contest, userId, token)) {
+                return ActionResult.failure(ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Access denied. Private contest requires valid invitation."));
+            }
 
             final var existing = participantRepository.findByContestIdAndUserId(contestId, userId.toString());
             if (existing.isPresent()) return ActionResult.success(new JoinContestResponse(existing.get().getId()));
@@ -81,5 +92,17 @@ public class JoinContestUseCase {
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             return ActionResult.failure(ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Join failed"));
         }
+    }
+
+    private boolean isAccessAllowed(final Contest contest, final UUID userId, final String token) {
+        if (contest.getOrganizerId().equals(userId.toString())) {
+            return true;
+        }
+
+        if (token != null && !token.isBlank()) {
+            return soulboundTokenService.validateSoulboundToken(token, userId, contest.getId());
+        }
+
+        return false;
     }
 }

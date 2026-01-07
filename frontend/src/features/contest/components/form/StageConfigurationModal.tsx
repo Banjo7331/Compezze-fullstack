@@ -28,7 +28,7 @@ interface Props {
 
 export const StageConfigurationModal: React.FC<Props> = ({ open, onCancel, onAdd }) => {
   const [form] = Form.useForm();
-  const [stageType, setStageType] = useState<StageType>('QUIZ');
+  const [stageType, setStageType] = useState<StageType>('GENERIC');
   
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -71,7 +71,7 @@ export const StageConfigurationModal: React.FC<Props> = ({ open, onCancel, onAdd
       const values = await form.validateFields();
       onAdd(values);
       form.resetFields();
-      setStageType('QUIZ');
+      setStageType('GENERIC');
       setSearchTerm('');
     } catch (e) {
     }
@@ -90,7 +90,7 @@ export const StageConfigurationModal: React.FC<Props> = ({ open, onCancel, onAdd
         form={form} 
         layout="vertical" 
         initialValues={{ 
-          type: 'QUIZ', durationMinutes: 30, weight: 1, 
+          type: 'GENERIC', durationMinutes: 30, weight: 1, 
           timePerQuestion: 30, maxParticipants: 100,
           juryRevealMode: 'IMMEDIATE', maxScore: 10
         }}
@@ -108,6 +108,7 @@ export const StageConfigurationModal: React.FC<Props> = ({ open, onCancel, onAdd
                   setSearchTerm('');
                   form.setFieldValue('referenceId', null); 
               }}>
+                <Option value="GENERIC">Other</Option>
                 <Option value="QUIZ">Quiz Game</Option>
                 <Option value="SURVEY">Survey Form</Option>
                 <Option value="JURY_VOTE">Jury Voting</Option>

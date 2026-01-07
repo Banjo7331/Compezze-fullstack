@@ -63,9 +63,6 @@ export const TemplateSelector: React.FC<Props> = ({ selectedKey, onSelect }) => 
                   </div>
                 )}
               </div>
-              <div style={{ textAlign: 'center', marginTop: 4 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>{tpl.name}</Text>
-              </div>
             </Col>
           );
         })}
